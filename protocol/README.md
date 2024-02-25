@@ -4,7 +4,7 @@
 
 I don't have a CP Plus, so I obtained this data from my own experimentations based on the TrumaLogs found in [the WomoLin repository](https://github.com/muccc/WomoLIN), the spreadsheet available in the [Truma Inetbox Reverse Engineering repository](https://gitlab.womolin.de/public-repository/truma-inet-box-reverse-engineering) and the invaluable help from the kind people on the [Womo_Lin telegram channel](https://t.me/Womo_Lin).
 
-The information herein may be inaccurate so be carefult if you try to hack your Combi, it's an expensive device and I don't assume any responsibility for any damage it may cause.
+The information herein may be inaccurate so be careful if you try to hack your Combi, it's an expensive device and I don't assume any responsibility for any damage it may cause.
 
 ## Missing things
 
@@ -32,10 +32,10 @@ If you stop sending frames, the Combi will stop after about one minute.
 ## Temperature encoding
 The temperature in the setpoint and in the status message is in degrees Kelvin multiplied by 10, it is encoded in two bytes, LSB and MSB.
 
-To obtain the setpoint from ºC you have to add 273 and multiply by 10, e.g. 25.4ºC &rarr; (25.4-273)*10=2984, which in hex is 0x0BA8 so the two bytes will be 0xA8, 0x0B.
+To obtain the setpoint from ºC you have to add 273 and multiply by 10, e.g. 25.4ºC &rarr; (25.4+273)*10=2984, which in hex is 0x0BA8 so the two bytes will be 0xA8, 0x0B.
 
 ## Voltage encoding
-In the status frame two bytes, LSB and MSB, encode the supply voltage. To obtain the voltage you have to multiply the value by 0.01 and subtract 327.67.
+In the status frame two bytes, LSB and MSB, encode the supply voltage. To obtain the voltage you have to multiply the value by 0.01 and subtract 327.67 (or subtract 32767 and multiply by 0.01).
 
 If the two bytes are 0x31, 0x85 the voltage will be 0x8531*0.01-327.67 &rarr; 13.3V
 
@@ -47,7 +47,7 @@ If the two bytes are 0x31, 0x85 the voltage will be 0x8531*0.01-327.67 &rarr; 13
 
 To turn the heating on you should give here a positive setpoint. With 0.0 (0xAA, 0X0A) the heating will turn off.
 For this to work the fan (frame 0x07) should be 0x00 (off), 0x01 (eco) or 0x02 (high).
-I don't know if the Combi interprets corretly setpoints with decimals, the cp plus only allows to set the temperature in 1º increments between 5º and 30º. 
+I don't know if the Combi interprets correctly setpoints with decimals, the cp plus only allows to set the temperature in 1º increments between 5º and 30º. 
 
 
 ## Frame 0x04, Water temperature setpoint
@@ -60,7 +60,7 @@ The possible setpoints should 0 (boiler off), 40 (boiler eco), 55 (boiler hot) a
 
 I don't know if other setpoints are accepted or if you have to limit the setpoints if the heating is also on.
 
-**It seems this frame is doing nothing**
+**It seems this frame is doing nothing, I still don't know how to turn on the boiler**
 
 ## Frame 0x05, Energy selection
 
@@ -85,7 +85,7 @@ I dont' have a Combi E so I always use 0x01 here
 |--|--|--|--|--|--|--|--|
 |LSB|MSB|0xff|0xff|0xff|0xff|0xff|0xff|0xff|
 
-The possible values are 0x0000 for diesel, 0x0384 (900 in decimal) for 900W electricity and 0x0708 (1800 in decimal) for 1800W electricity. Remember to swap the bytes when sending the frame.
+The possible values are 0x0000 for diesel, 0x0384 (900 in decimal) for 900W electricity and 0x0708 (1800 in decimal) for 1800W electricity. Remember to swap the bytes when sending the frame (0x84, 0x03 for 900W and 0x08, 0x07 for 1800W).
 
 Again, since I don't have a Combi E I alwayse use 0x00, 0x00.
 
@@ -130,7 +130,7 @@ For the temperature and voltage values see the respective sections. The values a
 
 ### Extended status
 
-Extended status should be one of the values in this table, but I always see it at 0x00
+Extended status should be one of the values in this table, but I always see a 0x00 here.
 
 |Value|Status|
 |--|--|
@@ -200,7 +200,7 @@ Meaning unknown
 |--|--|--|--|--|--|--|
 |0x06|0xF2|??|??|??|??|??|
 
-I always see D1 at 0x01 and D5 at 0xFF. I don't know the meaning of D2, D3 and D4.
+I always see D1=0x01 and D5=0xFF. I don't know the meaning of D2, D3 and D4.
 Most probably D3 is the error code but there must be some bits of the error code in one of the other bytes, since there are codes above 255.
 
 I could only force two errors, both below 255

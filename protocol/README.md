@@ -8,7 +8,7 @@ The information herein may be inaccurate so be careful if you try to hack your C
 
 ## Missing things
 
-I still don't know how to turn on the boiler (only the heating), how to decode the error codes in the diagnostic reply (one of the bytes is surely part of the code, but there are codes over 255 so there must be some bits in another byte, also I don't know how to distinguish between an error and a warning) and how to reset an error. Also I couldn't find a way to activate the "room boost" mode.
+I still don't know how to decode the error codes in the diagnostic reply (one of the bytes is surely part of the code, but there are codes over 255 so there must be some bits in another byte, also I don't know how to distinguish between an error and a warning) and how to reset an error. Also I couldn't find a way to activate the "room boost" mode and I'm not sure what I found about the boiler is correct.
 
 ## Control sequence
 
@@ -60,7 +60,9 @@ The possible setpoints should 0 (boiler off), 40 (boiler eco), 55 (boiler hot) a
 
 I don't know if other setpoints are accepted or if you have to limit the setpoints if the heating is also on.
 
-**It seems this frame is doing nothing, I still don't know how to turn on the boiler**
+To turn on the boiler you have to set the fan to off (see below) (I suppose turning on the heating should also work but I couldn't test that yet) and the only settings that are accepted are 0/40 (both are equivalent to 40º) and 55 (equivalent to 60º). The burner stops when the water is around 5º below the setpoint (35º with 0 and 40, 55º with 55).
+
+I guess that for "boiler boost" you have to send a frame to disable heating until the bit "water request" in frame 0x16 is 0.
 
 ## Frame 0x05, Energy selection
 
@@ -68,7 +70,7 @@ I don't know if other setpoints are accepted or if you have to limit the setpoin
 |--|--|--|--|--|--|--|--|
 |Energy selection|0xff|0xff|0xff|0xff|0xff|0xff|0xff|
 
-Here the first bytes encode the energy selection
+Here the first byte encodes the energy selection
 
 |Value|Energy selection|
 |--|--|
@@ -99,7 +101,7 @@ The first byte is the fan mode:
 
 |Value|Mode|
 |--|--|
-|0x00|off **actually it turns on the boiler**|
+|0x00|off **actually it turns on the boiler without turning on the heating**|
 |0x01|normal curve (eco?)|
 |0x02|strong curve (high?)|
 |0x10|speed 0 (off)|
@@ -116,7 +118,7 @@ The first byte is the fan mode:
 
 The manual mode overrides the heating, for the heating to work you have to set this to 0x00, 0x01, 0x02.
 
-*Note: setting this to 0x00 with 0º setpoint for heating will turn on the boiler (?)*.
+*Note: setting this to 0x00 with 0º/40º or 55º setpoint for water will turn on the boiler (?)*.
 
 The second byte is supposedly the room boost (?), 0x00 if disabled or 0x01 if enabled. I'm not really sure about it. It doesn't make a difference.
 
@@ -208,4 +210,4 @@ I could only force two errors, both below 255
 |Error|D2-D3-D4|Notes|
 |--|--|--|
 |Window open|0x02, 0xA2, 0x03 or 0x02, 0xA2, 0x00| 0xA2 is 162, which is the code for the window open according to the cp plus manual. This error resets automatically when the window is closed|
-|Temperature sensor|0x14,0x6F,0x05|0x6F is 111, "temperature sensor". To reset this code I had to remove power to the Combi| 
+|Temperature sensor|0x14,0x6F,0x05|0x6F is 111, "temperature sensor". To reset this code I had to remove power to the Combi or stop the communication on the lin bus for around 80 seconds| 

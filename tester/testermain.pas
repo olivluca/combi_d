@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Grids, Spin, ExtCtrls, truma;
+  Grids, Spin, ExtCtrls, truma, trumautils;
 
 type
 

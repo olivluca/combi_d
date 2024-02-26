@@ -186,7 +186,7 @@ D1 and D2 have the same value (though D2 might lag behind D1), the values I saw 
 
 I think 0x01 means "ready", 0x02 "on" (acknowledging D3 in the request) and 0x03 "working" (heater or boiler on).
 
-In ventilation mode it never shows 0x03 even if the fan is running, unless you send a 0x01 in D3 in the request. In that case it shows 0x03 briefly.
+In ventilation mode it never shows 0x03 even if the fan is running, unless you send a 0x00 in D3 in the request (after keeping it at 0x01). In that case it shows 0x03 briefly.
 
 ### request 2
 |Frame type|Function|D1|D2|D3|D4|D5|

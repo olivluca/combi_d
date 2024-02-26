@@ -11,6 +11,7 @@ interface
 uses
   Classes, SysUtils,lin;
 
+const FRAMEDELAY=10;
 type
   TBoilerMode = (BoilerOff, BoilerEco, BoilerHot, BoilerBoost);
 const
@@ -254,54 +255,54 @@ begin
   writeln('======================================================');
 
   WriteFrame($3,HeaterCommand(FSetPointTemp));
-  sleep(5);
+  Sleep(FRAMEDELAY);
   WriteFrame($4,BoilerCommand(FBoilerMode));
-  sleep(5);
+  Sleep(FRAMEDELAY);
   WriteFrame($5,EnergySelect(EnergyDiesel));
-  sleep(5);
+  Sleep(FRAMEDELAY);
   WriteFrame($6,SetPowerLimit(PowerDiesel));
-  sleep(5);
+  Sleep(FRAMEDELAY);
   //if FSetPointTemp>0 then
   //begin
   //   WriteFrame($7,Fan(FanEco,0,false))
   //end else
      WriteFrame($7,Fan(FFanMode,FFanSpeed,FFanBoost));
-  sleep(5);
+  Sleep(FRAMEDELAY);
   {  truma doesn't reply to these frames
   ReadFrame($3a,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($39,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($38,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($32,lindata,8); //Combi_Complete_V8
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($37,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($36,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($35,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($34,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($33,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
   }
 
   { useless data, unless proven otherwise
   ReadFrame($14,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
 
   ReadFrame($15,lindata,4); //Combi_Complete_V8
-  sleep(5);
+  Sleep(FRAMEDELAY);
   }
 
   if ReadFrame($16,lindata,8) then //Combi_Complete_V8, Combi_DE_V119
@@ -311,20 +312,20 @@ begin
       FStatus:=lindata;
       Synchronize(@NotifyStatus);
     end else
-      sleep(5);
+      Sleep(FRAMEDELAY);
   end;
 
   {
   ReadFrame($1a,lindata,7); //Yellow led status?
-  sleep(5);
+  Sleep(FRAMEDELAY);
   }
   {
   ReadFrame($3b,lindata,8); //Combi_DE_V119
-  sleep(5);
+  Sleep(FRAMEDELAY);
   }
   if WriteFrame($3c,DiagFrame(FDiagCycle, FOnOff {(FFanMode<>FanOff) or (FSetPointTemp>0.0) or (FBoilerMode<>BoilerOff)})) then
   begin
-    sleep(5);
+    Sleep(FRAMEDELAY);
     if ReadFrame($3d,lindata,8) then
     begin
       if lindata<>FDiag[FDiagCycle] then
@@ -332,7 +333,7 @@ begin
         FDiag[FDiagCycle]:=lindata;
         Synchronize(@NotifyDiag)
       end else
-        sleep(5);
+        Sleep(FRAMEDELAY);
     end;
   end;
   FDiagCycle:=3-FDiagCycle;

@@ -1,9 +1,9 @@
 # Combi D experiments
 
-Some experiments to emulate a cp-plus for a truma combi D.
+Some experiments to emulate a cp-plus for a truma combi D (old version, with the rectangular cowl).
 
-Protocol contains a description of the communication protocol on the lin
+The *protocol* directory contains a description of the communication protocol on the lin
 bus.
 
-Tester contains a pascal program to check the protocol.
+The *tester* directory contains a pascal program to check the protocol.
 

@@ -1,0 +1,295 @@
+object Form1: TForm1
+  Left = 242
+  Height = 435
+  Top = 275
+  Width = 681
+  Caption = 'Truma Simulator'
+  ClientHeight = 435
+  ClientWidth = 681
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  LCLVersion = '2.2.6.0'
+  object Label1: TLabel
+    Left = 21
+    Height = 15
+    Top = 42
+    Width = 84
+    Caption = 'Temp. setpoint'
+    ParentColor = False
+  end
+  object TempSetpoint: TLabel
+    Left = 136
+    Height = 15
+    Top = 42
+    Width = 8
+    Caption = '--'
+    ParentColor = False
+  end
+  object WaterSetpoint: TLabel
+    Left = 136
+    Height = 15
+    Top = 80
+    Width = 8
+    Caption = '--'
+    ParentColor = False
+  end
+  object Label2: TLabel
+    Left = 21
+    Height = 15
+    Top = 80
+    Width = 85
+    Caption = 'Water setpoint'
+    ParentColor = False
+  end
+  object Label3: TLabel
+    Left = 21
+    Height = 15
+    Top = 120
+    Width = 22
+    Caption = 'Fan'
+    ParentColor = False
+  end
+  object Fan: TLabel
+    Left = 136
+    Height = 15
+    Top = 120
+    Width = 14
+    Caption = '00'
+    ParentColor = False
+  end
+  object Memo1: TMemo
+    Left = 8
+    Height = 190
+    Top = 234
+    Width = 656
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ScrollBars = ssAutoBoth
+    TabOrder = 0
+    WordWrap = False
+  end
+  object CbOnOff: TCheckBox
+    Left = 21
+    Height = 20
+    Top = 155
+    Width = 78
+    Caption = 'CbOnOff'
+    Enabled = False
+    TabOrder = 1
+  end
+  object Temperature: TFloatSpinEdit
+    Left = 405
+    Height = 29
+    Top = 47
+    Width = 107
+    DecimalPlaces = 1
+    Increment = 0.1
+    OnChange = TemperatureChange
+    TabOrder = 2
+  end
+  object Water: TFloatSpinEdit
+    Left = 405
+    Height = 29
+    Top = 80
+    Width = 107
+    DecimalPlaces = 1
+    Increment = 0.1
+    OnChange = WaterChange
+    TabOrder = 3
+  end
+  object Voltage: TFloatSpinEdit
+    Left = 405
+    Height = 29
+    Top = 112
+    Width = 107
+    DecimalPlaces = 1
+    Increment = 0.1
+    OnChange = VoltageChange
+    TabOrder = 4
+  end
+  object Label4: TLabel
+    Left = 313
+    Height = 15
+    Top = 56
+    Width = 70
+    Caption = 'Temperature'
+    ParentColor = False
+  end
+  object Label5: TLabel
+    Left = 313
+    Height = 15
+    Top = 89
+    Width = 35
+    Caption = 'Water'
+    ParentColor = False
+  end
+  object Label6: TLabel
+    Left = 313
+    Height = 15
+    Top = 119
+    Width = 44
+    Caption = 'Voltage'
+    ParentColor = False
+  end
+  object Label7: TLabel
+    Left = 313
+    Height = 15
+    Top = 160
+    Width = 33
+    Caption = 'Diag1'
+    ParentColor = False
+  end
+  object Diag1h: TLabel
+    Left = 436
+    Height = 15
+    Top = 165
+    Width = 14
+    Caption = '00'
+    ParentColor = False
+  end
+  object Label8: TLabel
+    Left = 313
+    Height = 15
+    Top = 208
+    Width = 33
+    Caption = 'Diag2'
+    ParentColor = False
+  end
+  object Diag2h: TLabel
+    Left = 576
+    Height = 15
+    Top = 208
+    Width = 58
+    Caption = '00, 00, 00'
+    ParentColor = False
+  end
+  object Diag1: TMaskEdit
+    Left = 360
+    Height = 29
+    Top = 155
+    Width = 50
+    MaxLength = 2
+    TabOrder = 5
+    OnChange = Diag1Change
+    EditMask = 'hh'
+    Text = '00'
+    SpaceChar = '_'
+  end
+  object Diag2_1: TMaskEdit
+    Tag = 1
+    Left = 360
+    Height = 29
+    Top = 200
+    Width = 50
+    MaxLength = 2
+    TabOrder = 6
+    OnChange = Diag2_1Change
+    EditMask = 'hh'
+    Text = '00'
+    SpaceChar = '_'
+  end
+  object Diag2_2: TMaskEdit
+    Tag = 2
+    Left = 424
+    Height = 29
+    Top = 200
+    Width = 50
+    MaxLength = 2
+    TabOrder = 7
+    OnChange = Diag2_1Change
+    EditMask = 'hh'
+    Text = '00'
+    SpaceChar = '_'
+  end
+  object Diag2_3: TMaskEdit
+    Tag = 3
+    Left = 488
+    Height = 29
+    Top = 200
+    Width = 50
+    MaxLength = 2
+    TabOrder = 8
+    OnChange = Diag2_1Change
+    EditMask = 'hh'
+    Text = '00'
+    SpaceChar = '_'
+  end
+  object Label9: TLabel
+    Left = 21
+    Height = 15
+    Top = 8
+    Width = 91
+    Caption = 'Received data'
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+  end
+  object Label10: TLabel
+    Left = 312
+    Height = 15
+    Top = 8
+    Width = 79
+    Caption = 'Data to send'
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+  end
+  object Easi: TCheckBox
+    Left = 536
+    Height = 20
+    Top = 34
+    Width = 54
+    Caption = 'Easi'
+    OnChange = BitChange
+    TabOrder = 9
+  end
+  object Netz: TCheckBox
+    Tag = 1
+    Left = 536
+    Height = 20
+    Top = 56
+    Width = 55
+    Caption = 'Netz'
+    OnChange = BitChange
+    TabOrder = 10
+  end
+  object Fenster: TCheckBox
+    Tag = 2
+    Left = 536
+    Height = 20
+    Top = 80
+    Width = 72
+    Caption = 'Fenster'
+    OnChange = BitChange
+    TabOrder = 11
+  end
+  object RoomDemand: TCheckBox
+    Tag = 3
+    Left = 536
+    Height = 20
+    Top = 104
+    Width = 110
+    Caption = 'RoomDemand'
+    OnChange = BitChange
+    TabOrder = 12
+  end
+  object WaterDemand: TCheckBox
+    Tag = 4
+    Left = 536
+    Height = 20
+    Top = 128
+    Width = 111
+    Caption = 'WaterDemand'
+    OnChange = BitChange
+    TabOrder = 13
+  end
+  object Error: TCheckBox
+    Tag = 7
+    Left = 536
+    Height = 20
+    Top = 152
+    Width = 56
+    Caption = 'Error'
+    OnChange = BitChange
+    TabOrder = 14
+  end
+end

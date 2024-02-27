@@ -298,7 +298,7 @@ begin
                             Fonoff:=true;
                             Synchronize(@NotifyOnOff);
                           end;
-                          diagcycle:=2;
+                          diagcycle:=1;
                         end
                         else if lindata=DiagFrame(2,false) then
                         begin

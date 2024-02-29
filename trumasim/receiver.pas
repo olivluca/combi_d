@@ -95,21 +95,6 @@ begin
       FOnMessage(FMessage);
 end;
 
-function GetChecksum(const pid:UInt8; const data:String):Uint8;
-var
-  sum: UInt32;
-  i: Integer;
-begin
-  sum:=pid;
-  if (sum and $3f)>=$3c then
-    sum:=0;
-  for i:=1 to length(data) do
-    sum:=sum+ord(data[i]);
-  while (sum and $ff00) > 0 do
-     sum:=(sum and $ff) + (sum shr 8);
-  result:=not sum;
-end;
-
 procedure TTrumaReceiver.Execute;
 var c, pid, id, NewFan:byte;
   status:(WaitBreak,WaitSync,WaitPid);

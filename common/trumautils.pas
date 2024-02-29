@@ -22,6 +22,7 @@ const
 type
   TEnergySelect = (EnergyNone, EnergyDiesel, EnergyElectricity, EnergyMix);
 
+  function GetChecksum(const pid:UInt8; const data:String):Uint8;
   function HeaterCommand(temperature:extended):string;
   function BoilerCommand(mode:TBoilerMode):string;
   function EnergySelect(const mode:TEnergySelect):string;
@@ -37,6 +38,23 @@ type
 
 
 implementation
+
+function GetChecksum(const pid:UInt8; const data:String):Uint8;
+var
+  sum: UInt32;
+  i: Integer;
+begin
+  sum:=pid;
+  if (sum and $3f)>=$3c then
+    sum:=0;
+  for i:=1 to length(data) do
+    sum:=sum+ord(data[i]);
+  while (sum and $ff00) > 0 do
+     sum:=(sum and $ff) + (sum shr 8);
+  result:=not sum;
+end;
+
+
 function HeaterCommand(temperature: extended): string;
 begin
   setlength(result,8);

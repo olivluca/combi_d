@@ -9,33 +9,51 @@ unit truma;
 interface
 
 uses
-  Classes, SysUtils,lin,trumautils;
+  Classes, SysUtils,lin,trumautils,trumaframes;
 
-const FRAMEDELAY=10;
+const FRAMEDELAY=50;
 
 type
   { TTrumaD }
 
-  TNotification = procedure(const index:integer; const payload:string) of object;
+  TMasterReplyNotification = procedure(const index:integer; const payload:string) of object;
+  TOnFrameReceived = procedure(const id:byte) of object;
   TMessageNotification = procedure(const msg:string) of object;
   TTrumaD = class (TThread)
     private
       FOpened:boolean;
       FLinMaster:TLinMaster;
       FSetPointTemp:extended;
+      FSimulTemp:extended;
       FBoilerMode:TBoilerMode;
       FFanMode:TFanMode;
       FFanSpeed:integer;
-      FFanBoost:boolean;
       FOnOff:boolean;
-      FStatus:string;
+      FOldFrame:array[1..255] of string;
       FDiag:array[1..2] of string;
       FDiagCycle:integer;
-      FOnStatus:TNotification;
-      FOnDiag:TNotification;
+      FFrameId:byte;
+      FOnFrameReceived:TOnFrameReceived;
+      FOnDiag:TMasterReplyNotification;
       FOnMessage:TMessageNotification;
       FMessage:string;
-      procedure NotifyStatus;
+      Fwaterboost : record
+        active:boolean;
+        finished:boolean;
+        remaining:integer;
+        start:qword;
+        oldWaterRequest:boolean;
+      end;
+      FWaterDemand:boolean;
+      FWaterTemperature:extended;
+      FResetError:boolean;
+      FFrame16:TFrame16;
+      FFrame14:TFrame14;
+      FFrame34:TFrame34;
+      FFrame39:TFrame39;
+      FFrame35:TFrame35;
+      FFrame3b:TFrame3b;
+      procedure NotifyFrame;
       procedure NotifyDiag;
       procedure NotifyMessage;
       procedure DoMessage(const msg:string);
@@ -48,16 +66,23 @@ type
     protected
       procedure Execute;override;
     public
-      constructor create(const port:String; OnStatus,OnDiag:TNotification; OnMessage:TMessageNotification);
+      constructor create(const port:String; OnFramereceived:TOnFrameReceived; OnDiag:TMasterReplyNotification; OnMessage:TMessageNotification);
       destructor Destroy;override;
       property Opened:boolean read FOpened;
       property SetPointTemp:extended read FSetPointTemp write SetSetpointTemp;
+      property SimulTemp:extended read FSimulTemp write FSimulTemp;
       property BoilerMode:TBoilerMode read FBoilerMode write SetBoilerMode;
       property FanMode:TFanMode read FFanMode write SetFanMode;
       property FanSpeed:integer read FFanSpeed write SetFanSpeed;
       property FakeReceive:boolean write SetFakeReceive;
       property OnOff:boolean read FOnOff write FOnOff;
-      property FanBoost:boolean read FFanBoost write FFanBoost;
+      procedure ResetError;
+      property Frame16:TFrame16 read FFrame16;
+      property Frame14:TFrame14 read FFrame14;
+      property Frame34:TFrame34 read FFrame34;
+      property Frame39:TFrame39 read FFrame39;
+      property Frame35:TFrame35 read FFrame35;
+      property Frame3b:TFrame3b read FFrame3b;
   end;
 
 implementation
@@ -65,10 +90,10 @@ implementation
 
 { TTrumaD }
 
-procedure TTrumaD.NotifyStatus;
+procedure TTrumaD.NotifyFrame;
 begin
-  if assigned(FOnStatus) then
-    FOnStatus(0,FStatus);
+  if assigned(FOnFrameReceived) then
+    FOnFrameReceived(FFrameId);
 end;
 
 procedure TTrumaD.NotifyDiag;
@@ -129,81 +154,239 @@ end;
 procedure TTrumaD.Loop;
 var
   lindata: string;
+  PumpOrFan: byte;
+  LocSetPointTemp: Extended;
+  TimeElapsed: QWord;
+  MinutesRemaining, i: integer;
+
   function WriteFrame(const id:byte; const data:string):boolean;
   begin
     result:=FLinMaster.WriteFrame(id, data);
     if not result then
        DoMessage(format('error write %.2x: %s',[id,FLinMaster.LastErrorDesc]));
   end;
-  function ReadFrame(const id:UInt8; out data:string; const expectedlen:Uint8):boolean;
+  function ReadFrame(const id:UInt8; var dest; const expectedlen:Uint8):boolean;
+  var LocData:string;
   begin
-    result:=FLinMaster.ReadFrame(id, data, expectedlen);
-    if not result then
-       DoMessage(format('error read %.2x: %s',[id, FLinMaster.LastErrorDesc]))
+    FFrameId:=id;
+    result:=FLinMaster.ReadFrame(id, LocData, expectedlen);
+    if result then
+    begin
+      if (id=$3c) or (id=$3d) or (LocData<>FOldFrame[id]) then
+      begin
+        Move(LocData[1],dest,8);
+        if (id<>$3c) and (id<>$3d) then
+          Synchronize(@NotifyFrame);
+      end;
+    end else
+      DoMessage(format('error read %.2x: %s',[id, FLinMaster.LastErrorDesc]))
   end;
+
+  function MasterControlFrame(const sid:byte; const data:string; out reply:string):boolean;
+  var LocFrame:String;
+    loclen: Byte;
+  begin
+    SetLength(LocFrame,8);
+    FillByte(LocFrame[1],8,$ff);
+    loclen:=length(data);
+    if loclen>5 then
+       loclen:=5;
+    Byte(locframe[1]):=$01; //NAD
+    Byte(locframe[2]):=loclen+1; //PCI Single frame+len (+1 for the SID)
+    Byte(locframe[3]):=sid;
+    move(data[1],locframe[4],loclen);
+    result:=WriteFrame($3c,LocFrame);
+    if not result then
+       exit;
+    Sleep(FRAMEDELAY);
+    result:=ReadFrame($3d,LocFrame[1],8);
+    if not result then
+       exit;
+    loclen:=byte(locframe[2]);
+    if loclen>6 then
+    begin
+      DoMessage(format('mrf %.2x wrong length %d',[sid,loclen]));
+      result:=false;
+      exit;
+    end;
+    if byte(locframe[3])<>sid+64 then
+    begin
+      DoMessage(format('mrf %.2x wrong rsid, expected %.2x, received %.2x',[sid,sid+64,byte(locframe[3])]));
+      result:=false;
+      exit;
+    end;
+    loclen:=loclen-1;
+    SetLength(reply,loclen);
+    move(locframe[4],reply[1],loclen);
+    Sleep(FRAMEDELAY);
+  end;
+
+  function TrumaOnOff(active:boolean):boolean;
+  var i:integer;
+  begin
+    result:=false;
+    for i:=1 to 5 do
+      if MasterControlFrame($b8,chr($10)+chr($03)+chr(ord(active)),lindata) then
+      begin
+        result:=true;
+        if lindata<>FDiag[1] then
+        begin
+          FDiagCycle:=1;
+          FDiag[1]:=lindata;
+          Synchronize(@NotifyDiag);
+        end;
+        break;
+      end;
+  end;
+
+  function TrumaGetErrorInfo:boolean;
+  begin
+    result:=MasterControlFrame($b2,chr($23)+chr($17)+chr($46)+chr($10)+chr($03),lindata);
+    if result then
+      if lindata<>FDiag[1] then
+      begin
+        FDiagCycle:=2;
+        FDiag[2]:=lindata;
+        Synchronize(@NotifyDiag);
+      end;
+  end;
+
+  function AssignFrameRanges(const StartIndex:byte; pids:string):boolean;
+  var locdata:string;
+    loclen: integer;
+  begin
+    setlength(locdata,5);
+    FillByte(locdata[1],5,$ff);
+    byte(locdata[1]):=StartIndex;
+    loclen:=length(pids);
+    if loclen>4 then
+      loclen:=4;
+    move(pids[1],locdata[2],loclen);
+    result:=MasterControlFrame($b7,locdata,lindata);
+  end;
+
+
 begin
   writeln('======================================================');
 
-  WriteFrame($3,HeaterCommand(FSetPointTemp));
+  if FResetError then
+  begin
+    FResetError:=false;
+    if TrumaOnOff(false) then
+      for i:=1 to 200 do
+      begin
+         if Terminated then
+           exit;
+         Sleep(50);
+      end;
+  end;
+
+  TrumaOnOff(FOnOff);
+
+  TrumaGetErrorInfo;
+
+  AssignFrameRanges(9,chr(251)+chr(186)+chr(57)+chr(120));
+  AssignFrameRanges(13,chr(55)+chr(118)+chr(245)+chr(180));
+  AssignFrameRanges(17, chr(115)+chr(50)+chr(255)+chr(255));
+
+
+  if ReadFrame($14, FFRame14, 8) then
+    Sleep(FRAMEDELAY);
+  if ReadFrame($34, FFRame34, 8) then
+    Sleep(FRAMEDELAY);
+  if ReadFrame($39, FFRame39, 8) then
+    Sleep(FRAMEDELAY);
+  if ReadFrame($35, FFRame35, 8) then
+    Sleep(FRAMEDELAY);
+  if ReadFrame($3b, FFRame3b, 8) then
+    Sleep(FRAMEDELAY);
+
+  LocSetPointTemp:=0.0;
+  if FSetPointTemp<5.0 then //no heating
+  begin
+     if FBoilerMode=BoilerOff then
+     begin
+        if FFanMode=FanOn then
+          PumpOrFan:=16+FFanSpeed
+        else
+          PumpOrFan:=0;
+     end else //boiler active
+     begin
+       PumpOrFan:=0;
+     end
+  end else //heating active
+  begin
+    LocSetPointTemp:=FSetPointTemp;
+    if FFanMode=FanHigh then
+       PumpOrFan:=2
+    else
+       PumpOrFan:=1;
+  end;
+  if FBoilerMode=BoilerBoost then
+  begin
+    if not FWaterBoost.Active then
+    begin
+      Fwaterboost.start:=GetTickCount64;
+      Fwaterboost.oldWaterRequest:=FWaterDemand;
+      FWaterboost.active:=true;
+      FWaterboost.finished:=false;
+      FWaterboost.remaining:=40;
+      DoMessage('WaterBoost activated')
+    end;
+  end else
+  begin
+    if Fwaterboost.active then
+      DoMessage('WaterBoost deactivated');
+    Fwaterboost.active:=false;
+  end;
+  if Fwaterboost.active and not FWaterboost.finished then
+  begin
+    //with water boost and water at less than 50º stop the heating
+    if FWaterTemperature<50.0  then
+      LocSetPointTemp:=0;
+    //max 40 minutes of water boost
+    TimeElapsed:=GetTickCount64-Fwaterboost.Start;
+    if TimeElapsed>=40*60*1000 then
+    begin
+      FWaterBoost.finished:=true;
+      DoMessage('WaterBoost active for 40 minutes, stopped');
+    end else
+    //water request deactivated (temperature reached), turn off boost
+    if Fwaterboost.oldWaterRequest and not FWaterDemand then
+    begin
+      FWaterBoost.finished:=true;
+      DoMessage('WaterBoost reached temperature, stopped');
+    end else
+    begin
+       MinutesRemaining:=40-TimeElapsed div 1000 div 60;
+       if MinutesRemaining<>Fwaterboost.remaining then
+       begin
+         Fwaterboost.remaining:=MinutesRemaining;
+         DoMessage(format('WaterBoost remaining %d minutes',[MinutesRemaining]))
+       end;
+    end;
+    Fwaterboost.oldWaterRequest:=FWaterDemand;
+  end;
+
+  WriteFrame($2,HeaterCommand(FSimulTemp));
+  Sleep(FRAMEDELAY);
+  WriteFrame($3,HeaterCommand(LocSetPointTemp));
   Sleep(FRAMEDELAY);
   WriteFrame($4,BoilerCommand(FBoilerMode));
   Sleep(FRAMEDELAY);
-  WriteFrame($5,EnergySelect(EnergyDiesel));
+  WriteFrame($5,EnergySelect(EsGasDiesel));
   Sleep(FRAMEDELAY);
-  WriteFrame($6,SetPowerLimit(PowerDiesel));
+  WriteFrame($6,SetPowerLimit(EsGasDiesel));
   Sleep(FRAMEDELAY);
-  //if FSetPointTemp>0 then
-  //begin
-  //   WriteFrame($7,Fan(FanEco,0,false))
-  //end else
-     WriteFrame($7,Fan(FFanMode,FFanSpeed,FFanBoost));
-  Sleep(FRAMEDELAY);
-  {  truma doesn't reply to these frames
-  ReadFrame($3a,lindata,8); //Combi_Complete_V8, Combi_DE_V119
+  WriteFrame($7,Fan(PumpOrFan));
   Sleep(FRAMEDELAY);
 
-  ReadFrame($39,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($38,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($32,lindata,8); //Combi_Complete_V8
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($37,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($36,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($35,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($34,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($33,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-  }
-
-  { useless data, unless proven otherwise
-  ReadFrame($14,lindata,8); //Combi_Complete_V8, Combi_DE_V119
-  Sleep(FRAMEDELAY);
-
-  ReadFrame($15,lindata,4); //Combi_Complete_V8
-  Sleep(FRAMEDELAY);
-  }
-
-  if ReadFrame($16,lindata,8) then //Combi_Complete_V8, Combi_DE_V119
+  if ReadFrame($16,FFrame16,8) then //Combi_Complete_V8, Combi_DE_V119
   begin
-    if lindata<>FStatus then
-    begin
-      FStatus:=lindata;
-      Synchronize(@NotifyStatus);
-    end else
-      Sleep(FRAMEDELAY);
+    FWaterTemperature:=FFrame16.WaterTemperature;
+    FWaterDemand:=FFrame16.WaterDemand;
   end;
+  Sleep(FRAMEDELAY);
 
   {
   ReadFrame($1a,lindata,7); //Yellow led status?
@@ -213,33 +396,19 @@ begin
   ReadFrame($3b,lindata,8); //Combi_DE_V119
   Sleep(FRAMEDELAY);
   }
-  if WriteFrame($3c,DiagFrame(FDiagCycle, FOnOff {(FFanMode<>FanOff) or (FSetPointTemp>0.0) or (FBoilerMode<>BoilerOff)})) then
-  begin
-    Sleep(FRAMEDELAY);
-    if ReadFrame($3d,lindata,8) then
-    begin
-      if lindata<>FDiag[FDiagCycle] then
-      begin
-        FDiag[FDiagCycle]:=lindata;
-        Synchronize(@NotifyDiag)
-      end else
-        Sleep(FRAMEDELAY);
-    end;
-  end;
-  FDiagCycle:=3-FDiagCycle;
 
   //frames autogenerated from captured data
   //{$include frames.inc}
 
 end;
 
-constructor TTrumaD.create(const port: String; OnStatus,OnDiag:TNotification; OnMessage:TMessageNotification);
+constructor TTrumaD.create(const port: String; OnFrameReceived:TOnFrameReceived; OnDiag:TMasterReplyNotification; OnMessage:TMessageNotification);
 begin
   FDiagCycle:=1;
   FLinMaster:=TLinMaster.Create(port,9600);
   FOpened:=FLinMaster.LastErrorDesc='';
   FLinMaster.Verbose:=true;
-  FOnStatus:=OnStatus;
+  FOnFrameReceived:=OnFrameReceived;
   FOnMessage:=OnMessage;
   FOnDiag:=OnDiag;
   if not FOpened then
@@ -250,6 +419,11 @@ end;
 destructor TTrumaD.Destroy;
 begin
   inherited Destroy;
+end;
+
+procedure TTrumaD.ResetError;
+begin
+  FResetError:=true;
 end;
 
 end.

@@ -100,8 +100,9 @@ var c, pid, id, NewFan:byte;
   status:(WaitBreak,WaitSync,WaitPid);
   lindata:string;
   w:word;
-  diagcycle, i:integer;
-  checksumreceived, framereceived:boolean;
+  i:integer;
+  mrsid:byte;
+  checksumreceived, framereceived, NewOnOff:boolean;
   chksum, expected: UInt8;
   NewSetPointReceived: Extended;
   oldtick: QWord;
@@ -135,7 +136,7 @@ begin
   if not Opened then
     exit;
   status:=WaitBreak;
-  diagcycle:=1;
+  mrsid:=0;
   setlength(lindata,8);
   oldtick:=GetTickCount64;
   while not Terminated do
@@ -189,10 +190,16 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
+           $14,$34,$39,$35,$3b:
+             begin
+               //FIXME
+               FillByte(lindata[1],8,0);
+               SendReply;
+             end;
            $3d:
              begin
                byte(lindata[1]):=$01;
-               if diagcycle=1 then
+               if mrsid=$b8 then
                begin
                  byte(lindata[2]):=$03;
                  byte(lindata[3]):=$f8;
@@ -201,7 +208,7 @@ begin
                  byte(lindata[6]):=$ff;
                  byte(lindata[7]):=$ff;
                  byte(lindata[8]):=$ff;
-               end else
+               end else if mrsid=$b2 then
                begin
                  byte(lindata[2]):=$06;
                  byte(lindata[3]):=$f2;
@@ -209,6 +216,15 @@ begin
                  byte(lindata[5]):=FDIagReply2[1];
                  byte(lindata[6]):=FDIagReply2[2];
                  byte(lindata[7]):=FDIagReply2[3];
+                 byte(lindata[8]):=$ff;
+               end else
+               begin
+                 byte(lindata[2]):=$03;
+                 byte(lindata[3]):=mrsid+64;
+                 byte(lindata[4]):=0;
+                 byte(lindata[5]):=0;
+                 byte(lindata[6]):=$ff;
+                 byte(lindata[7]):=$ff;
                  byte(lindata[8]):=$ff;
                end;
                SendReply;
@@ -267,27 +283,15 @@ begin
                       end;
                     $3c:
                       begin
-                        if lindata=DiagFrame(1,false) then
+                        mrsid:=byte(lindata[3]);
+                        if mrsid=$b8 then
                         begin
-                          if FOnoff then
+                          NewOnOff:=byte(lindata[6])<>0;
+                          if NewOnOff<>FOnOff then
                           begin
-                            Fonoff:=false;
+                            FOnOff:=NewOnOff;
                             Synchronize(@NotifyOnoff);
                           end;
-                          diagcycle:=1;
-                        end
-                        else if lindata=DiagFrame(1,true) then
-                        begin
-                          if not FOnOff then
-                          begin
-                            Fonoff:=true;
-                            Synchronize(@NotifyOnOff);
-                          end;
-                          diagcycle:=1;
-                        end
-                        else if lindata=DiagFrame(2,false) then
-                        begin
-                          diagcycle:=2;
                         end
                       end;
                  end;

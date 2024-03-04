@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Grids, Spin, ExtCtrls, truma, trumautils;
+  Grids, Spin, ExtCtrls, ValEdit, truma, trumautils;
 
 type
 
@@ -14,7 +14,8 @@ type
 
   TForm1 = class(TForm)
     BoilerMode: TComboBox;
-    FanBoost: TCheckBox;
+    btnReset: TButton;
+    cbSimulateTemp: TCheckBox;
     OnOff: TCheckBox;
     FanMode: TComboBox;
     Heat: TCheckBox;
@@ -22,8 +23,11 @@ type
     Memo1: TMemo;
     TempSetpoint: TFloatSpinEdit;
     StringGrid1: TStringGrid;
+    TempSimulation: TFloatSpinEdit;
     Timer1: TTimer;
-    procedure FanBoostChange(Sender: TObject);
+    ValueListEditor1: TValueListEditor;
+    procedure btnResetClick(Sender: TObject);
+    procedure cbSimulateTempChange(Sender: TObject);
     procedure FanModeChange(Sender: TObject);
     procedure FanSpeedChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -32,12 +36,13 @@ type
     procedure BoilerModeChange(Sender: TObject);
     procedure OnOffChange(Sender: TObject);
     procedure TempSetpointChange(Sender: TObject);
+    procedure TempSimulationChange(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
   private
     FTruma:TTrumaD;
     procedure NewDiag(const index: integer; const payload: string);
     procedure NewMessage(const msg: string);
-    procedure NewStatus(const index: integer; const payload: string);
+    procedure NewFrame(const id: byte);
   public
 
   end;
@@ -58,7 +63,7 @@ begin
   port:=Application.GetOptionValue('port');
   if port='' then
     port:='/dev/ttyUSB0';
-  FTruma:=TTrumaD.create(port,@NewStatus,@NewDiag,@NewMessage);
+  FTruma:=TTrumaD.create(port,@NewFrame,@NewDiag,@NewMessage);
   if Application.HasOption('fakereceive') then
     FTruma.FakeReceive:=true;
   if not FTruma.Opened then
@@ -78,9 +83,17 @@ begin
   FTruma.FanMode:=TFanMode(FanMode.ItemIndex);
 end;
 
-procedure TForm1.FanBoostChange(Sender: TObject);
+procedure TForm1.btnResetClick(Sender: TObject);
 begin
-  FTruma.FanBoost:=FanBoost.Checked;
+  FTruma.ResetError;
+end;
+
+procedure TForm1.cbSimulateTempChange(Sender: TObject);
+begin
+  if cbSimulateTemp.Checked then
+    FTruma.SimulTemp:=TempSimulation.Value
+  else
+    FTruma.SimulTemp:=-273.0
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -113,36 +126,87 @@ begin
     FTruma.SetPointTemp:=TempSetpoint.Value;
 end;
 
+procedure TForm1.TempSimulationChange(Sender: TObject);
+begin
+  if cbSimulateTemp.checked then
+     FTruma.SimulTemp:=TempSimulation.Value;
+end;
+
 procedure TForm1.Timer1Timer(Sender: TObject);
 begin
   //FTruma.Loop
 end;
 
-function ShowBit(by,bi:byte):string;
+function ShowBit(value:boolean):string;
 begin
-  if ((by shr bi) and 1)<>0 then
+  if value then
     result:='1'
   else
     result:='0';
 end;
-procedure TForm1.NewStatus(const index: integer; const payload: string);
-
-var
-  bits: Byte;
+procedure TForm1.NewFrame(const id:byte);
 begin
-  with StringGrid1 do
-  begin
-    //0 is extended flags, always 0
-    bits:=byte(payload[2]);
-    Cells[1,0]:=ShowBit(bits,0);
-    Cells[1,1]:=ShowBit(bits,1);
-    Cells[1,2]:=ShowBit(bits,2);
-    Cells[1,3]:=ShowBit(bits,3);
-    Cells[1,4]:=ShowBit(bits,4);
-    Cells[1,5]:=ShowBit(bits,7);
-    Cells[1,6]:=Format('%.1f ºC',[DecodeTempKelvin(byte(payload[3]),byte(payload[4]))]);
-    Cells[1,7]:=Format('%.1f ºC',[DecodeTempKelvin(byte(payload[5]),byte(payload[6]))]);
-    Cells[1,8]:=Format('%.1f V',[DecodeVoltage(byte(payload[7]),byte(payload[8]))]);
+  case id of
+    $16:
+        with StringGrid1,FTruma.Frame16 do
+        begin
+          //0 is extended flags, always 0
+          Cells[1,0]:=ShowBit(Easi);
+          Cells[1,1]:=ShowBit(Supply220);
+          Cells[1,2]:=ShowBit(Window);
+          Cells[1,3]:=ShowBit(RoomDemand);
+          Cells[1,4]:=ShowBit(WaterDemand);
+          Cells[1,5]:=ShowBit(Error);
+          Cells[1,6]:=Format('%.1f ºC',[RoomTemperature]);
+          Cells[1,7]:=Format('%.1f ºC',[WaterTemperature]);
+          Cells[1,8]:=Format('%.1f V',[BatteryVoltage]);
+        end;
+    $14:
+        With ValueListEditor1, FTruma.Frame14 do
+        begin
+          Values['14 Room temp']:=FormatFloat('.0',RoomTemperture);
+          Values['14 Room target']:=FormatFloat('.0',RoomTargetTemperature);
+          Values['14 Water target']:=FormatFloat('.0',WaterTargetTemperature);
+        end;
+    $34:
+        With ValueListEditor1, FTruma.Frame34 do
+        begin
+          Values['34 Op.time']:=IntToStr(OperationTime);
+          Values['34 Relays']:=Format('K1: %d, K2: %d, K3: %d',[ord(RelayK1),ord(RelayK2),ord(RelayK3)]);
+          Values['34 EBT mode']:=EbtMode;
+        end;
+     $39:
+        With ValueListEditor1, FTruma.Frame39 do
+        begin
+          Values['39 Exhaust temp']:=FormatFloat('.0',ExhaustTemperature);
+          Values['39 Pump freq.']:=FormatFloat('.0',PumpFrequency);
+          Values['39 Flame temp']:=FormatFloat('.0',FlameTemperature);
+        end;
+     $35:
+        With ValueListEditor1, FTruma.Frame35 do
+        begin
+          Values['35 Burner fan V']:=FormatFloat('.0',BurnerFanVoltage);
+          Values['35 Status']:=BurnerStatus;
+          Values['35 Glow plug']:=GlowPlugStatus;
+          Values['35 Hydonic state']:=HydronicState;
+          Values['35 Hydronic flame']:=HydronicFlame;
+        end;
+     $3b:
+        With ValueListEditor1, FTruma.Frame3b do
+        begin
+          Values['3b Battery']:=FormatFloat('.0',Battery);
+          Values['3b Extractor fan rpm']:=IntToStr(ExtractorFanRpm);
+          Values['3b Current error hydr.']:=IntToStr(CurrenErrorHydronic);
+          Values['3b Pump status']:=PumpStatus;
+          Values['3b Circ.Air motor setpoint']:=IntToStr(CircAirMotor_Setpoint);
+          Values['3b Circ.Air motor current']:=FormatFloat('.0',CircAirMotorCurrent);
+        end;
+
+
+
+    else
+      NewMessage('received unknown frame '+IntToHex(id,2))
+
   end;
 end;
 
@@ -155,11 +219,11 @@ begin
     if index=1 then
     begin
       for x:=0 to 1 do
-        Cells[1,9+x]:=IntToHex(byte(payload[4+x]))
+        Cells[1,9+x]:=IntToHex(byte(payload[1+x]))
     end else
     begin
       for x:=0 to 3 do
-        Cells[1,11+x]:=IntToHex(byte(payload[4+x]))
+        Cells[1,11+x]:=IntToStr(byte(payload[1+x]))
     end;
   end;
 end;
@@ -168,7 +232,7 @@ procedure TForm1.NewMessage(const msg: string);
 begin
 
   Memo1.Lines.Add(datetimetostr(now)+' '+msg);
-  Memo1.VertScrollBar.Position:=Memo1.VertScrollBar.Size+10000;
+  //Memo1.VertScrollBar.Position:=Memo1.VertScrollBar.Size+10000;
 
 end;
 

@@ -11,8 +11,8 @@ uses
 
 type
 
+  //------------------- frames read ---------------------
   { TFrame14 }
-
 
   TFrame14 = bitpacked record
   private
@@ -20,12 +20,12 @@ type
     function GetRoomTemperature: extended;
     function GetWaterTargetTemperature: extended;
   public
-    _RoomTemperature:word;
-    _RoomTargetTemperature: word;
-    _WaterTargetTemperature: word;
-    _EnergySelection: byte;
+    _RoomTemperature:word;                 //signum 60
+    _RoomTargetTemperature: word;          //signum 59
+    _WaterTargetTemperature: word;         //signum 61
+    _EnergySelection: byte;                //signum 72
     _Spare: byte;
-    property RoomTemperture:extended read GetRoomTemperature;
+    property RoomTemperature:extended read GetRoomTemperature;
     property RoomTargetTemperature:extended read GetRoomTargetTemperature;
     property WaterTargetTemperature:extended read GetWaterTargetTemperature;
   end;
@@ -38,18 +38,18 @@ type
     function GetRoomTemperature: extended;
     function GetWaterTemperature: extended;
   public
-    FixInfo:byte;
-    Easi:boolean;
-    Supply220:boolean;
-    Window:boolean;
-    RoomDemand:boolean;
-    WaterDemand:boolean;
+    FixInfo:byte;                     //signum 62
+    Antifreeze:boolean;               //signum 63
+    Supply220:boolean;                //signum 64
+    Window:boolean;                   //signum 68
+    RoomDemand:boolean;               //signum 65
+    WaterDemand:boolean;              //signum 66
     Bit13:boolean;
     Bit14:boolean;
-    Error:boolean;
-    _RoomTemperature:word;
-    _WaterTemperature:word;
-    _BatteryVoltage:word;
+    Error:boolean;                    //signum 67
+    _RoomTemperature:word;            //signum 69
+    _WaterTemperature:word;           //signum 70
+    _BatteryVoltage:word;             //signum 71
     property RoomTemperature:extended read GetRoomTemperature;
     property WaterTemperature:extended read GetWaterTemperature;
     property BatteryVoltage:extended read GetBatteryVoltage;
@@ -60,14 +60,15 @@ type
   TFrame34 = bitpacked record
   private
     function GetEbtMode: string;
+    function GetHydronicStartInfo: string;
     function GetOperationTime: integer;
   public
-    Event2:byte;
-    _OperationTime:packed array[0..2] of byte;
-    BtMode:byte;
-    StatusFlags4:byte;
-    _EbtMode:byte;
-    RelayK2:boolean;
+    _Event2:byte;                                //signum 42  (livedisplay uses 46, probably a bug)
+    _OperationTime:packed array[0..2] of byte;   //signum 43
+    BtMode:byte;                                 //signum 4
+    StatusFlags4:byte;                           //signum 23
+    _EbtMode:byte;                               //signum 16
+    RelayK2:boolean;                             //signum 17 (complete byte)
     RelayK1:Boolean;
     RelayK3:boolean;
     bit3:boolean;
@@ -77,22 +78,37 @@ type
     bit7:boolean;
     property OperationTime:integer read GetOperationTime;
     property EbtMode:string read GetEbtMode;
+    property HydronicStartInfo:string read GetHydronicStartInfo;
+  end;
+
+  { TFrame37 }
+
+  TFrame37 = bitpacked record
+  private
+    function GetTrendValueHydronic: extended;
+  public
+    StatusFlags2:byte;                //signum 21
+    StatusFlags3:byte;                //signum 22
+    DrawingNoHydronic:dword;          //signum 44
+    ChangeLevelHydronic:byte;         //signum 45
+    _TrendvalueHydronic:byte;          //signum 32
+    property TrendValueHydronic:extended read GetTrendValueHydronic;
   end;
 
   { TFrame39 }
 
   TFrame39 = bitpacked record
   private
-    function GetExhaustTemperature: extended;
+    function GetBlowOutTemperature: extended;
     function GetFlameTemperature: extended;
     function GetPumpFrequency: extended;
   public
-    _ExhaustTemperature:word;
-    ExhaustActualGradient:word;
-    ExhaustGradient:word;
-    _FlameTemperature:byte;
-    _PumpFrequency:byte;
-    property ExhaustTemperature:extended read GetExhaustTemperature;
+    _BlowOutTemperature:word;               //signum 13
+    BlowOutActualGradient:word;             //signum 14
+    BlowOutGradient:word;                   //signum 15
+    _FlameTemperature:byte;                 //signum 31
+    _PumpFrequency:byte;                    //signum 33
+    property BlowOutTemperature:extended read GetBlowOutTemperature;
     property PumpFrequency:extended read GetPumpFrequency;
     property FlameTemperature:extended read GetFlameTemperature;
   end;
@@ -107,14 +123,14 @@ type
     function GetHydronicState: string;
     function GetGlowPlugStatus: string;
   public
-    BatteryVoltageHydronic:byte;
-    ConditionNrHydronic:byte;
-    _AV3_Hydronic:byte;
-    _EVENT0_Hydronic:byte;
-    SafetyTime_Hydronic:byte;
-    StateTime_Hydronic:byte;
-    _BurnerFanVoltage:byte;
-    _AV2_Hydronic:byte;
+    BatteryVoltageHydronic:byte;         //signum 34
+    ConditionNrHydronic:byte;            //signum 35
+    _AV3_Hydronic:byte;                  //signum 36
+    _EVENT0_Hydronic:byte;               //signum 37
+    SafetyTime_Hydronic:byte;            //signum 38
+    StateTime_Hydronic:byte;             //signum 39
+    _BurnerFanVoltage:byte;              //signum 40
+    _AV2_Hydronic:byte;                  //signum 41
     property BurnerStatus:string read GetBurnerStatus;
     property GlowPlugStatus:string read GetGlowPlugStatus;
     property BurnerFanVoltage:extended read GetBurnerFanVoltage;
@@ -129,20 +145,20 @@ type
     function GetBattery: extended;
     function GetCircAirMotorCurrent: extended;
     function GetExtractorFanRpm: integer;
-    function GetPumpStatus: string;
+    function GetPumpSafetySwitch: string;
   public
-    SoftwareVersion_Tech:byte;
-    CurrentErrorTruma:byte;
-    CurrenErrorHydronic:byte;
-    _Battery:byte;
-    Hyd_power_level:byte;
-    CircAirMotor_Setpoint:byte;
-    _I_ULM_Actual:byte;
-    _ExtractorFanRpm:byte;
+    SoftwareVersion_Tech:byte;       //signum 0
+    CurrentErrorTruma:byte;          //signum 2
+    CurrentErrorHydronic:byte;       //signum 25
+    _Battery:byte;                   //signum 3
+    Hyd_power_level:byte;            //signum 5
+    CircAirMotor_Setpoint:byte;      //signum 6
+    _CircAirMotorCurrent:byte;       //signum 7
+    _ExtractorFanRpm:byte;           //signum 8
     property ExtractorFanRpm:integer read GetExtractorFanRpm;
     property Battery:extended read GetBattery;
-    property PumpStatus:string read GetPumpStatus;
-    property CircAirMotorCurrent:extended read GetCircAirMotorCurrent;
+    property PumpSafetySwitch:string read GetPumpSafetySwitch;
+    property CircAirMotorCurrent:extended read GetCircAirMotorCurrent;  //in Ampere
   end;
 
 implementation
@@ -151,6 +167,19 @@ implementation
 function GetTemperature(RawValue:word):extended;
 begin
   result:=LeToN(RawValue)*0.1-273;
+end;
+
+function RawToFlameTemperature(RawValue:byte):extended;
+begin
+    result:=power(RawValue,3.0)* 1.8602209820528515E-05 + Power(RawValue, 2.0) * -0.0004895309102721512 + RawValue * 1.4470709562301636 -65.64685821533203;
+
+end;
+
+{ TFrame37 }
+
+function TFrame37.GetTrendValueHydronic: extended;
+begin
+  result:=RawToFlameTemperature(_TrendvalueHydronic);
 end;
 
 { TFrame3b }
@@ -162,7 +191,7 @@ end;
 
 function TFrame3b.GetCircAirMotorCurrent: extended;
 begin
-  result:=_I_ULM_Actual/10.0;
+  result:=_CircAirMotorCurrent/10.0;
 end;
 
 function TFrame3b.GetExtractorFanRpm: integer;
@@ -177,9 +206,9 @@ begin
     result:=0;
 end;
 
-function TFrame3b.GetPumpStatus: string;
+function TFrame3b.GetPumpSafetySwitch: string;
 begin
-  if CurrenErrorHydronic=48 then
+  if CurrentErrorHydronic=48 then
     result:='open'
   else
     result:='closed';
@@ -228,21 +257,22 @@ begin
        0: result:='no voltage';
        4: result:='start';
        8: result:='restart';
-       else result:='?'+inttohex(_AV2_Hydronic,2);
+       else result:='?'+inttohex(_AV2_Hydronic and $0c,1);
   end;
 
 end;
 
 { TFrame39 }
 
-function TFrame39.GetExhaustTemperature: extended;
+function TFrame39.GetBlowOutTemperature: extended;
 begin
-  result:=LeToN(_ExhaustTemperature)*0.1;
+  result:=LeToN(_BlowOutTemperature)*0.1;
 end;
 
 function TFrame39.GetFlameTemperature: extended;
 begin
-  result:=power(_FlameTemperature,3.0)* 1.8602209820528515E-05 + Power(_FlameTemperature, 2.0) * -0.0004895309102721512 + _FlameTemperature * 1.4470709562301636 -65.64685821533203;
+  //NOTE: up to 290ºC OK, up to 390 warning, over 390 error
+  result:=RawToFlameTemperature(_FlameTemperature);
 end;
 
 function TFrame39.GetPumpFrequency: extended;
@@ -261,6 +291,20 @@ begin
      3: result:='Mixed 900W';
      4: result:='Mixed 1800W';
      else result:='?'+inttostr(_EbtMode);
+  end;
+end;
+
+function TFrame34.GetHydronicStartInfo: string;
+var
+  b: Byte;
+begin
+  b:=_Event2 and $7;
+  case b of
+     0:result:='No start info';
+     1:result:='1st start';
+     2:result:='Norm. start';
+     4:result:='Repeat start'
+     else result:='?'+inttohex(b,1);
   end;
 end;
 

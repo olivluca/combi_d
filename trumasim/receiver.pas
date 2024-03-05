@@ -121,7 +121,7 @@ var c, pid, id, NewFan:byte;
      SerDrain(FPort);
      //read back sent data
      for i:=1 to 9 do
-       if SerReadTimeout(FPort,dummy,1,10)<>1 then
+       if SerReadTimeout(FPort,dummy,1,20)<>1 then
        begin
          Log('readback timeout');
          break
@@ -190,7 +190,7 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
-           $14,$34,$39,$35,$3b:
+           $14,$34,$37,$39,$35,$3b:
              begin
                //FIXME
                FillByte(lindata[1],8,0);

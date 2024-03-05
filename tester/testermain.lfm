@@ -1,109 +1,47 @@
 object Form1: TForm1
   Left = 14
-  Height = 716
+  Height = 788
   Top = 229
-  Width = 1180
+  Width = 674
   Caption = 'Truma Lin Tester'
-  ClientHeight = 716
-  ClientWidth = 1180
+  ClientHeight = 788
+  ClientWidth = 674
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   LCLVersion = '2.2.6.0'
-  object StringGrid1: TStringGrid
-    Left = 16
-    Height = 374
-    Top = 24
-    Width = 344
-    ColCount = 2
-    FixedRows = 0
-    RowCount = 15
-    TabOrder = 0
-    ColWidths = (
-      172
-      214
-    )
-    Cells = (
-      15
-      0
-      0
-      'easi'
-      0
-      1
-      'netz'
-      0
-      2
-      'fenster'
-      0
-      3
-      'room demand'
-      0
-      4
-      'water demand'
-      0
-      5
-      'error'
-      0
-      6
-      'temperature'
-      0
-      7
-      'water temp.'
-      0
-      8
-      'supply voltage'
-      0
-      9
-      'req. power state'
-      0
-      10
-      'current power state'
-      0
-      11
-      'error formatinfo (always 1)'
-      0
-      12
-      'error class'
-      0
-      13
-      'error detail'
-      0
-      14
-      'error short'
-    )
-  end
   object TempSetpoint: TFloatSpinEdit
-    Left = 401
+    Left = 425
     Height = 29
-    Top = 41
+    Top = 23
     Width = 98
     DecimalPlaces = 1
     Increment = 0.1
     MaxValue = 35
     OnChange = TempSetpointChange
-    TabOrder = 1
+    TabOrder = 0
   end
   object Heat: TCheckBox
-    Left = 512
+    Left = 536
     Height = 20
-    Top = 48
+    Top = 23
     Width = 55
     Caption = 'Heat'
     OnChange = HeatChange
-    TabOrder = 2
+    TabOrder = 1
   end
   object FanSpeed: TSpinEdit
-    Left = 401
+    Left = 425
     Height = 29
-    Top = 120
+    Top = 95
     Width = 50
     MaxValue = 10
     OnChange = FanSpeedChange
-    TabOrder = 3
+    TabOrder = 2
   end
   object FanMode: TComboBox
-    Left = 456
+    Left = 480
     Height = 32
-    Top = 120
+    Top = 95
     Width = 100
     ItemHeight = 21
     ItemIndex = 0
@@ -115,13 +53,13 @@ object Form1: TForm1
     )
     OnChange = FanModeChange
     Style = csDropDownList
-    TabOrder = 4
+    TabOrder = 3
     Text = 'Fan Off'
   end
   object BoilerMode: TComboBox
-    Left = 401
+    Left = 425
     Height = 32
-    Top = 211
+    Top = 186
     Width = 167
     ItemHeight = 21
     ItemIndex = 0
@@ -133,73 +71,125 @@ object Form1: TForm1
     )
     OnChange = BoilerModeChange
     Style = csDropDownList
-    TabOrder = 5
+    TabOrder = 4
     Text = 'Boiler Off'
   end
   object Memo1: TMemo
-    Left = 16
-    Height = 165
+    Left = 424
+    Height = 237
     Top = 544
-    Width = 1154
+    Width = 240
     Anchors = [akTop, akLeft, akRight, akBottom]
     ScrollBars = ssAutoBoth
-    TabOrder = 6
+    TabOrder = 5
     WordWrap = False
   end
   object OnOff: TCheckBox
-    Left = 401
+    Left = 425
     Height = 20
-    Top = 271
+    Top = 246
     Width = 170
     Caption = 'On/Off in master request'
     OnChange = OnOffChange
-    TabOrder = 7
+    TabOrder = 6
   end
   object btnReset: TButton
-    Left = 400
+    Left = 424
     Height = 25
-    Top = 344
+    Top = 319
     Width = 104
     Caption = 'Reset error'
     OnClick = btnResetClick
-    TabOrder = 8
+    TabOrder = 7
   end
   object ValueListEditor1: TValueListEditor
-    Left = 640
-    Height = 528
-    Top = 16
+    Left = 8
+    Height = 781
+    Top = 0
     Width = 400
+    Anchors = [akTop, akLeft, akBottom]
     AutoEdit = False
     DefaultColWidth = 200
     FixedCols = 0
     RowCount = 2
-    TabOrder = 9
+    TabOrder = 8
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goColSizing, goThumbTracking]
+    TitleCaptions.Strings = (
+      'Frame/Signal'
+      'Value'
+    )
     ColWidths = (
       200
       196
     )
   end
   object TempSimulation: TFloatSpinEdit
-    Left = 401
+    Left = 425
     Height = 29
-    Top = 80
+    Top = 55
     Width = 98
     DecimalPlaces = 1
     Increment = 0.1
     MaxValue = 35
     MinValue = -30
     OnChange = TempSimulationChange
-    TabOrder = 10
+    TabOrder = 9
   end
   object cbSimulateTemp: TCheckBox
-    Left = 512
+    Left = 536
     Height = 20
-    Top = 80
+    Top = 55
     Width = 116
     Caption = 'Simulate temp.'
     OnChange = cbSimulateTempChange
+    TabOrder = 10
+  end
+  object StringGrid1: TStringGrid
+    Left = 424
+    Height = 136
+    Top = 360
+    Width = 216
+    ColCount = 2
+    FixedRows = 0
     TabOrder = 11
+    ColWidths = (
+      138
+      64
+    )
+    Cells = (
+      5
+      0
+      0
+      'Requested status'
+      0
+      1
+      'Current status'
+      0
+      2
+      'Error class'
+      0
+      3
+      'Error detail'
+      0
+      4
+      'Error short'
+    )
+  end
+  object Label1: TLabel
+    Left = 425
+    Height = 15
+    Top = 0
+    Width = 72
+    Caption = 'Read cycles'
+    ParentColor = False
+  end
+  object ReadCycles: TLabel
+    Left = 520
+    Height = 15
+    Top = 0
+    Width = 8
+    Caption = '--'
+    ParentColor = False
   end
   object Timer1: TTimer
     Enabled = False

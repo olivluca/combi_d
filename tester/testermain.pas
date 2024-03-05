@@ -16,13 +16,15 @@ type
     BoilerMode: TComboBox;
     btnReset: TButton;
     cbSimulateTemp: TCheckBox;
+    Label1: TLabel;
+    ReadCycles: TLabel;
     OnOff: TCheckBox;
     FanMode: TComboBox;
     Heat: TCheckBox;
     FanSpeed: TSpinEdit;
     Memo1: TMemo;
-    TempSetpoint: TFloatSpinEdit;
     StringGrid1: TStringGrid;
+    TempSetpoint: TFloatSpinEdit;
     TempSimulation: TFloatSpinEdit;
     Timer1: TTimer;
     ValueListEditor1: TValueListEditor;
@@ -40,6 +42,7 @@ type
     procedure Timer1Timer(Sender: TObject);
   private
     FTruma:TTrumaD;
+    FReadCycles:integer;
     procedure NewDiag(const index: integer; const payload: string);
     procedure NewMessage(const msg: string);
     procedure NewFrame(const id: byte);
@@ -148,25 +151,27 @@ procedure TForm1.NewFrame(const id:byte);
 begin
   case id of
     $16:
-        with StringGrid1,FTruma.Frame16 do
+        with ValueListEditor1,FTruma.Frame16 do
         begin
           //0 is extended flags, always 0
-          Cells[1,0]:=ShowBit(Easi);
-          Cells[1,1]:=ShowBit(Supply220);
-          Cells[1,2]:=ShowBit(Window);
-          Cells[1,3]:=ShowBit(RoomDemand);
-          Cells[1,4]:=ShowBit(WaterDemand);
-          Cells[1,5]:=ShowBit(Error);
-          Cells[1,6]:=Format('%.1f ºC',[RoomTemperature]);
-          Cells[1,7]:=Format('%.1f ºC',[WaterTemperature]);
-          Cells[1,8]:=Format('%.1f V',[BatteryVoltage]);
+          Values['16 antifreeze']:=ShowBit(Antifreeze);
+          Values['16 220V supply']:=ShowBit(Supply220);
+          Values['16 window']:=ShowBit(Window);
+          Values['16 room demand']:=ShowBit(RoomDemand);
+          Values['16 water demand']:=ShowBit(WaterDemand);
+          Values['16 error']:=ShowBit(Error);
+          Values['16 room temp.']:=FormatFloat('0.0',RoomTemperature);
+          Values['16 water temp.']:=FormatFloat('0.0',WaterTemperature);
+          Values['16 battery voltage']:=FormatFloat('0.0',BatteryVoltage);
+          FReadCycles:=FReadCycles+1;
+          ReadCycles.Caption:=IntToStr(FReadCycles);
         end;
     $14:
         With ValueListEditor1, FTruma.Frame14 do
         begin
-          Values['14 Room temp']:=FormatFloat('.0',RoomTemperture);
-          Values['14 Room target']:=FormatFloat('.0',RoomTargetTemperature);
-          Values['14 Water target']:=FormatFloat('.0',WaterTargetTemperature);
+          Values['14 Room temp']:=FormatFloat('0.0',RoomTemperature);
+          Values['14 Room target']:=FormatFloat('0.0',RoomTargetTemperature);
+          Values['14 Water target']:=FormatFloat('0.0',WaterTargetTemperature);
         end;
     $34:
         With ValueListEditor1, FTruma.Frame34 do
@@ -174,18 +179,24 @@ begin
           Values['34 Op.time']:=IntToStr(OperationTime);
           Values['34 Relays']:=Format('K1: %d, K2: %d, K3: %d',[ord(RelayK1),ord(RelayK2),ord(RelayK3)]);
           Values['34 EBT mode']:=EbtMode;
+          Values['34 Hydr.start info']:=HydronicStartInfo;
+        end;
+    $37:
+        With ValueListEditor1, FTruma.Frame37 do
+        begin
+          Values['37 Trend value hydronic']:=FormatFloat('0.0',TrendValueHydronic);
         end;
      $39:
         With ValueListEditor1, FTruma.Frame39 do
         begin
-          Values['39 Exhaust temp']:=FormatFloat('.0',ExhaustTemperature);
-          Values['39 Pump freq.']:=FormatFloat('.0',PumpFrequency);
-          Values['39 Flame temp']:=FormatFloat('.0',FlameTemperature);
+          Values['39 Blow out temp']:=FormatFloat('0.0',BlowOutTemperature);
+          Values['39 Pump freq.']:=FormatFloat('0.0',PumpFrequency);
+          Values['39 Flame temp']:=FormatFloat('0.0',FlameTemperature);
         end;
      $35:
         With ValueListEditor1, FTruma.Frame35 do
         begin
-          Values['35 Burner fan V']:=FormatFloat('.0',BurnerFanVoltage);
+          Values['35 Burner fan V']:=FormatFloat('0.0',BurnerFanVoltage);
           Values['35 Status']:=BurnerStatus;
           Values['35 Glow plug']:=GlowPlugStatus;
           Values['35 Hydonic state']:=HydronicState;
@@ -194,19 +205,15 @@ begin
      $3b:
         With ValueListEditor1, FTruma.Frame3b do
         begin
-          Values['3b Battery']:=FormatFloat('.0',Battery);
+          Values['3b Battery']:=FormatFloat('0.0',Battery);
           Values['3b Extractor fan rpm']:=IntToStr(ExtractorFanRpm);
-          Values['3b Current error hydr.']:=IntToStr(CurrenErrorHydronic);
-          Values['3b Pump status']:=PumpStatus;
+          Values['3b Current error hydr.']:=IntToStr(CurrentErrorHydronic);
+          Values['3b Pump safety sw']:=PumpSafetySwitch;
           Values['3b Circ.Air motor setpoint']:=IntToStr(CircAirMotor_Setpoint);
-          Values['3b Circ.Air motor current']:=FormatFloat('.0',CircAirMotorCurrent);
+          Values['3b Circ.Air motor current']:=FormatFloat('0.0',CircAirMotorCurrent);
         end;
-
-
-
     else
       NewMessage('received unknown frame '+IntToHex(id,2))
-
   end;
 end;
 
@@ -219,11 +226,11 @@ begin
     if index=1 then
     begin
       for x:=0 to 1 do
-        Cells[1,9+x]:=IntToHex(byte(payload[1+x]))
+        Cells[1,x]:=IntToHex(byte(payload[1+x]))
     end else
     begin
-      for x:=0 to 3 do
-        Cells[1,11+x]:=IntToStr(byte(payload[1+x]))
+      for x:=1 to 3 do
+        Cells[1,2+x-1]:=IntToStr(byte(payload[1+x]))
     end;
   end;
 end;

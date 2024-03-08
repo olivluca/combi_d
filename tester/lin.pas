@@ -5,7 +5,12 @@ unit lin;
 interface
 
 uses
-  Classes, SysUtils, serial,  termio, baseunix, unix
+  Classes, SysUtils, serial
+  {$IFDEF WINDOWS}
+  ,windows
+  {$ELSE}
+  ,termio, baseunix, unix
+  {$ENDIF}
 ;
 
 type
@@ -77,11 +82,11 @@ procedure TLinMaster.WriteBreak;
 var b:byte;
 begin
 
-  {
+  {$IFDEF WINDOWS}
   //en Linux no se puede controlar la duración del break
-  SerBreak(FPort,1000000 * 14 div FBaud);
+  SerBreak(FPort,1000 * 14 div FBaud, false);
    exit;
-   }
+  {$ELSE}
   //reabre el puerto con la mitad del baud para hacer un break reconocible por el bus
   //(no puedo usar SerSetParams directamente, funciona solo una vez y después no hace nada)
   SerClose(FPort);
@@ -93,6 +98,7 @@ begin
   SerClose(FPort);
   Fport:=SerOpen(FPortname);
   SerSetParams(FPort,FBaud, 8, NoneParity, 1, []);
+  {$ENDIF}
 end;
 
 procedure TLinMaster.StartTransmission(const pid: Uint8);
@@ -108,11 +114,29 @@ begin
 end;
 
 //función no implementada en Serial
+{$IFDEF WINDOWS}
+function TLinMaster.WaitingData: integer;
+var
+  stat: TComStat;
+  err: DWORD;
+begin
+  err := 0;
+  if ClearCommError(FPort, err, @stat) then
+  begin
+    Result := stat.cbInQue;
+  end
+  else
+  begin
+    Result := 0;
+  end;
+end;
+{$ELSE}
 function TLinMaster.WaitingData: integer;
 begin
   if fpIoctl(FPort, FIONREAD, @result)<0 then
     result:=0;
 end;
+{$ENDIF}
 
 procedure TLinMaster.SendByte(const b: byte);
 begin
@@ -125,7 +149,7 @@ begin
   FBaud:=baudrate;
   FPortname:=port;
   FPort:=SerOpen(FPortname);
-  if FPort<0 then
+  if FPort<=0 then
   begin
     FLastErrorDesc:='port not found';
     exit;

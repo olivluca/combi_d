@@ -34,6 +34,7 @@ type
       procedure SendByte(const b:byte);
     public
       Constructor Create(const port:string; const baudrate:integer);
+      destructor Destroy;override;
       function ReadFrame(const id:UInt8; out data:string; const expectedlen:Uint8=0):boolean;
       function WriteFrame(const id:Uint8; const data:string):boolean;
       //function WriteFrameClassic(const id:Uint8; const data:string):boolean;
@@ -151,10 +152,16 @@ begin
   FPort:=SerOpen(FPortname);
   if FPort<=0 then
   begin
-    FLastErrorDesc:='port not found';
+    FLastErrorDesc:='cannot open port '+FPortname{$IFDEF WINDOWS}+':'+IntToHex(GetLastError){$ENDIF};
     exit;
   end;
   SerSetParams(FPort,FBaud,8,NoneParity,1,[]);
+end;
+
+destructor TLinMaster.Destroy;
+begin
+  SerClose(FPort);
+  inherited Destroy;
 end;
 
 function TLinMaster.ReadFrame(const id: UInt8; out data: string;

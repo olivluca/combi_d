@@ -101,7 +101,7 @@ var c, pid, id, NewFan:byte;
   lindata:string;
   w:word;
   i:integer;
-  mrsid:byte;
+  mrsid,nad:byte;
   checksumreceived, framereceived, NewOnOff:boolean;
   chksum, expected: UInt8;
   NewSetPointReceived: Extended;
@@ -197,9 +197,9 @@ begin
                SendReply;
              end;
            $3d:
-             begin
+             if (nad=$01) or (nad=$7f) then begin //only reply if master request was for own nad or broadcast
                byte(lindata[1]):=$01;
-               if mrsid=$b8 then
+               if (mrsid=$b8) and (nad=$01) then
                begin
                  byte(lindata[2]):=$03;
                  byte(lindata[3]):=$f8;
@@ -208,7 +208,7 @@ begin
                  byte(lindata[6]):=$ff;
                  byte(lindata[7]):=$ff;
                  byte(lindata[8]):=$ff;
-               end else if mrsid=$b2 then
+               end else if (mrsid=$b2) and (nad=$01) then
                begin
                  byte(lindata[2]):=$06;
                  byte(lindata[3]):=$f2;
@@ -217,6 +217,16 @@ begin
                  byte(lindata[6]):=FDIagReply2[2];
                  byte(lindata[7]):=FDIagReply2[3];
                  byte(lindata[8]):=$ff;
+               end else if (mrsid=$b2) and (nad=$7f) then  //broadcast
+               begin
+                 Log('sending $3d broadcast reply');
+                 byte(lindata[2]):=$06;
+                 byte(lindata[3]):=$f2;
+                 byte(lindata[4]):=$17; //supplier id $4617-> truma
+                 byte(lindata[5]):=$46;
+                 byte(lindata[6]):=$10; //function id $0310 -> combi diesel
+                 byte(lindata[7]):=$03;
+                 byte(lindata[8]):=$03; //tin variant
                end else
                begin
                  byte(lindata[2]):=$03;
@@ -284,7 +294,9 @@ begin
                     $3c:
                       begin
                         mrsid:=byte(lindata[3]);
-                        if mrsid=$b8 then
+                        nad:=byte(lindata[1]);
+                        Log(format('received $3c with nad %x sid %x',[nad,mrsid]));
+                        if (mrsid=$b8) and (nad=$01) then
                         begin
                           NewOnOff:=byte(lindata[6])<>0;
                           if NewOnOff<>FOnOff then

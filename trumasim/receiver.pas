@@ -101,7 +101,7 @@ var c, pid, id, NewFan:byte;
   lindata:string;
   w:word;
   i:integer;
-  mrsid,nad:byte;
+  mrsid,nad, b2func:byte;
   checksumreceived, framereceived, NewOnOff:boolean;
   chksum, expected: UInt8;
   NewSetPointReceived: Extended;
@@ -146,7 +146,7 @@ begin
       Status:=WaitBreak;
       if GetTickCount64-oldtick>=1000 then
       begin
-        Log('not receiving');
+        //Log('not receiving');
         oldtick:=GetTickCount64;
       end;
       continue;
@@ -210,13 +210,38 @@ begin
                  byte(lindata[8]):=$ff;
                end else if (mrsid=$b2) and (nad=$01) then
                begin
-                 byte(lindata[2]):=$06;
-                 byte(lindata[3]):=$f2;
-                 byte(lindata[4]):=$01;
-                 byte(lindata[5]):=FDIagReply2[1];
-                 byte(lindata[6]):=FDIagReply2[2];
-                 byte(lindata[7]):=FDIagReply2[3];
-                 byte(lindata[8]):=$ff;
+                 case b2func of
+                   $20://read software version
+                     begin
+                       byte(lindata[2]):=$04;
+                       byte(lindata[3]):=$f2;
+                       byte(lindata[4]):=$06; //sw version major
+                       byte(lindata[5]):=$00; //sw version minor;
+                       byte(lindata[6]):=$02; //sw version bugfix
+                       byte(lindata[7]):=$ff;
+                       byte(lindata[8]):=$ff;
+                     end;
+                   $22://read tin version
+                     begin
+                       byte(lindata[2]):=$04;
+                       byte(lindata[3]):=$f2;
+                       byte(lindata[4]):=$06; //sw version major
+                       byte(lindata[5]):=$00; //sw version minor;
+                       byte(lindata[6]):=$02; //sw version bugfix
+                       byte(lindata[7]):=$ff;
+                       byte(lindata[8]):=$ff;
+                     end;
+                   $23: //get error code
+                     begin
+                       byte(lindata[2]):=$06;
+                       byte(lindata[3]):=$f2;
+                       byte(lindata[4]):=$01;
+                       byte(lindata[5]):=FDIagReply2[1];
+                       byte(lindata[6]):=FDIagReply2[2];
+                       byte(lindata[7]):=FDIagReply2[3];
+                       byte(lindata[8]):=$ff;
+                     end;
+                  end
                end else if (mrsid=$b2) and (nad=$7f) then  //broadcast
                begin
                  Log('sending $3d broadcast reply');
@@ -304,6 +329,11 @@ begin
                             FOnOff:=NewOnOff;
                             Synchronize(@NotifyOnoff);
                           end;
+                        end;
+                        if (mrsid=$b2) and (nad=$01) then
+                        begin
+                          b2func:=byte(lindata[4]);
+                          log('received b2func '+INtToHex(b2func,2))
                         end
                       end;
                  end;

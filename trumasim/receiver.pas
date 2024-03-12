@@ -190,7 +190,7 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
-           {$14,}$34,$37,$39,$35,$3b: //FIXME reply to $14 only if enabled
+           { $14,}$34,$37,$39,$35,$3b: //FIXME reply to $14 only if enabled
              begin
                //FIXME
                FillByte(lindata[1],8,0);
@@ -225,9 +225,9 @@ begin
                      begin
                        byte(lindata[2]):=$04;
                        byte(lindata[3]):=$f2;
-                       byte(lindata[4]):=$06; //sw version major
+                       byte(lindata[4]):=$03; //sw version major
                        byte(lindata[5]):=$00; //sw version minor;
-                       byte(lindata[6]):=$02; //sw version bugfix
+                       byte(lindata[6]):=$00; //sw version bugfix
                        byte(lindata[7]):=$ff;
                        byte(lindata[8]):=$ff;
                      end;

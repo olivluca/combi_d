@@ -190,7 +190,7 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
-           $14,$34,$37,$39,$35,$3b:
+           {$14,}$34,$37,$39,$35,$3b: //FIXME reply to $14 only if enabled
              begin
                //FIXME
                FillByte(lindata[1],8,0);

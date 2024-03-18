@@ -14,6 +14,7 @@ type
 
   TForm1 = class(TForm)
     CbOnOff: TCheckBox;
+    ReplyToFrame14: TCheckBox;
     Error: TCheckBox;
     WaterDemand: TCheckBox;
     RoomDemand: TCheckBox;
@@ -48,6 +49,7 @@ type
     procedure BitChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure ReplyToFrame14Change(Sender: TObject);
     procedure TemperatureChange(Sender: TObject);
     procedure VoltageChange(Sender: TObject);
     procedure WaterChange(Sender: TObject);
@@ -132,6 +134,11 @@ end;
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   FReceiver.Free;
+end;
+
+procedure TForm1.ReplyToFrame14Change(Sender: TObject);
+begin
+  FReceiver.ReplyToFrame14:=ReplyToFrame14.Checked;
 end;
 
 procedure TForm1.TemperatureChange(Sender: TObject);

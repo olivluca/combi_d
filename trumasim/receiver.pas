@@ -31,7 +31,7 @@ TDiagReply2 = array[1..3] of byte;
     FFan:byte;
     FOnoff:boolean;
     FMessage:string;
-
+    FReplyToFrame14:boolean;
     FOnSetpoint:TOnSetpoint;
     FOnFan:TOnFan;
     FOnOnoff:TOnOnoff;
@@ -54,6 +54,7 @@ TDiagReply2 = array[1..3] of byte;
     property Voltage:extended read FVoltage write FVoltage;
     property DiagReply1:byte read FDiagReply1 write FDiagReply1;
     property DiagReply2:TDiagReply2 read FDiagReply2 write FDiagReply2;
+    property ReplyToFrame14:boolean read FReplyToFrame14 write FReplyToFrame14;
 end;
 
 implementation
@@ -190,11 +191,13 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
-           { $14,}$34,$37,$39,$35,$3b: //FIXME reply to $14 only if enabled
+           $14,$15,$1a,$33,$3a,$34,$36,$37,$38,$39,$35,$3b:
              begin
-               //FIXME
-               FillByte(lindata[1],8,0);
-               SendReply;
+               if (id<>$14) or FReplyToFrame14 then
+               begin
+                 FillByte(lindata[1],8,0);
+                 SendReply;
+               end;
              end;
            $3d:
              if (nad=$01) or (nad=$7f) then begin //only reply if master request was for own nad or broadcast
@@ -244,7 +247,7 @@ begin
                   end
                end else if (mrsid=$b2) and (nad=$7f) then  //broadcast
                begin
-                 Log('sending $3d broadcast reply');
+                 //Log('sending $3d broadcast reply');
                  byte(lindata[2]):=$06;
                  byte(lindata[3]):=$f2;
                  byte(lindata[4]):=$17; //supplier id $4617-> truma
@@ -263,6 +266,7 @@ begin
                  byte(lindata[8]):=$ff;
                end;
                SendReply;
+               nad:=0;
              end;
            else
              begin
@@ -320,7 +324,7 @@ begin
                       begin
                         mrsid:=byte(lindata[3]);
                         nad:=byte(lindata[1]);
-                        Log(format('received $3c with nad %x sid %x',[nad,mrsid]));
+                        //Log(format('received $3c with nad %x sid %x',[nad,mrsid]));
                         if (mrsid=$b8) and (nad=$01) then
                         begin
                           NewOnOff:=byte(lindata[6])<>0;
@@ -333,7 +337,7 @@ begin
                         if (mrsid=$b2) and (nad=$01) then
                         begin
                           b2func:=byte(lindata[4]);
-                          log('received b2func '+INtToHex(b2func,2))
+                          //log('received b2func '+INtToHex(b2func,2))
                         end
                       end;
                  end;

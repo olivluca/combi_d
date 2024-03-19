@@ -259,9 +259,9 @@ var
       end;
   end;
 
-  function AssignFrameRanges(const StartIndex:byte; pids:string):boolean;
+  function AssignFrameRanges(const StartIndex:byte; pids:array of byte):boolean;
   var locdata:string;
-    loclen: integer;
+    loclen, p: integer;
   begin
     setlength(locdata,5);
     FillByte(locdata[1],5,$ff);
@@ -269,7 +269,8 @@ var
     loclen:=length(pids);
     if loclen>4 then
       loclen:=4;
-    move(pids[1],locdata[2],loclen);
+    for p:=0 to high(pids) do
+       byte(locdata[2+p]):=TLinMaster.GetProtectedId(pids[p]);
     result:=MasterControlFrame($b7,locdata,lindata);
   end;
 
@@ -293,9 +294,9 @@ begin
 
   TrumaGetErrorInfo;
 
-  AssignFrameRanges(9,chr(251)+chr(186)+chr(57)+chr(120));
-  AssignFrameRanges(13,chr(55)+chr(118)+chr(245)+chr(180));
-  AssignFrameRanges(17, chr(115)+chr(50)+chr(255)+chr(255));
+  AssignFrameRanges($09,[$3b,$3a,$39,$38]);
+  AssignFrameRanges($0d,[$37,$36,$35,$34]);
+  AssignFrameRanges($11,[$33,$32]);
 
   if ReadFrame($16,FFrame16,8) then //Combi_Complete_V8, Combi_DE_V119
   begin

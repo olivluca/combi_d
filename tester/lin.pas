@@ -25,7 +25,6 @@ type
       FLastErrorDesc:string;
       FVerbose:boolean;
       FFakeReceive:boolean;
-      function GetProtectedId(const id:Uint8):Uint8;
       function GetChecksum(const pid:UInt8; const data:String):Uint8;
       procedure WriteBreak;
       procedure StartTransmission(const pid:Uint8);
@@ -34,6 +33,7 @@ type
       procedure SendByte(const b:byte);
     public
       Constructor Create(const port:string; const baudrate:integer);
+      class function GetProtectedId(const id:Uint8):Uint8;
       destructor Destroy;override;
       function ReadFrame(const id:UInt8; out data:string; const expectedlen:Uint8=0):boolean;
       function WriteFrame(const id:Uint8; const data:string):boolean;
@@ -55,7 +55,7 @@ begin
      result:=0;
 end;
 
-function TLinMaster.GetProtectedId(const id: Uint8): Uint8;
+class function TLinMaster.GetProtectedId(const id: Uint8): Uint8;
 var
   p0,p1: uint8;
 begin

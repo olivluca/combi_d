@@ -6,10 +6,6 @@ I don't have a CP Plus, so I obtained this data from my own experimentations bas
 
 The information herein may be inaccurate so be careful if you try to hack your Combi, it's an expensive device and I don't assume any responsibility for any damage it may cause.
 
-## Missing things
-
-I still don't know how to decode the error codes in the diagnostic reply (one of the bytes is surely part of the code, but there are codes over 255 so there must be some bits in another byte, also I don't know how to distinguish between an error and a warning) and how to reset an error. Also I couldn't find a way to activate the "room boost" mode and I'm not sure what I found about the boiler is correct.
-
 ## Control sequence
 
 To control the Combi D from the lin bus (i.e. to emulate a cp-plus) you have to repeatedly send and read lin frames with the following IDs
@@ -29,6 +25,9 @@ All the frames are eight bytes long.
 
 If you stop sending frames, the Combi will stop after about one minute.
 
+There are some extra diagnostic frames that are not normally available but
+can be enabled if needed.
+
 ## Temperature encoding
 The temperature in the setpoint and in the status message is in degrees Kelvin multiplied by 10, it is encoded in two bytes, LSB and MSB.
 
@@ -45,7 +44,7 @@ If the two bytes are 0x31, 0x85 the voltage will be 0x8531*0.01-327.67 &rarr; 13
 |--|--|--|--|--|--|--|--|
 |Setpoint low|Setpoint high|0xff|0xff|0xff|0xff|0xff|0xff|
 
-To turn the heating on you should give here a positive setpoint. With 0.0 (0xAA, 0X0A) the heating will turn off.
+To turn the heating on you should give here a positive setpoint. With 0.0 (0xAA, 0x0A) the heating will turn off.
 For this to work the fan (frame 0x07) should be 0x00 (off), 0x01 (eco) or 0x02 (high).
 I don't know if the Combi interprets correctly setpoints with decimals, the cp plus only allows to set the temperature in 1º increments between 5º and 30º. 
 
@@ -56,13 +55,14 @@ I don't know if the Combi interprets correctly setpoints with decimals, the cp p
 |--|--|--|--|--|--|--|--|
 |Setpoint low|Setpoint high|0xff|0xff|0xff|0xff|0xff|0xff|
 
-The possible setpoints should 0 (boiler off), 40 (boiler eco), 55 (boiler hot) and 60 (boost).
+The possible setpoints are 0 (boiler off), 40 (boiler eco), 55 (boiler hot) and 60 (boost).
 
-I don't know if other setpoints are accepted or if you have to limit the setpoints if the heating is also on.
+The boost is not managed by the heater but by the cp-plus: it should be kept
+active at most for 40 minutes or when the water request goes from true to false
+(meaning it has reached the setpoint). Also, if the water temperature is
+less than 50º, it should keep the heating off (by giving a 0ºC setpoint in
+frame 0x03).
 
-To turn on the boiler you have to set the fan to off (see below) (I suppose turning on the heating should also work but I couldn't test that yet) and the only settings that are accepted are 0/40 (both are equivalent to 40º) and 55 (equivalent to 60º). The burner stops when the water is around 5º below the setpoint (35º with 0 and 40, 55º with 55).
-
-I guess that for "boiler boost" you have to send a frame to disable heating until the bit "water request" in frame 0x16 is 0.
 
 ## Frame 0x05, Energy selection
 
@@ -91,19 +91,19 @@ The possible values are 0x0000 for diesel, 0x0384 (900 in decimal) for 900W elec
 
 Again, since I don't have a Combi E I alwayse use 0x00, 0x00.
 
-## Frame 0x07, fan and room boost (?)
+## Frame 0x07, fan
 
 |byte 0|byte 1|byte 2| byte 3|byte 4|byte 5|byte 6|byte 7|
 |--|--|--|--|--|--|--|--|
-|Fan|Boost|0xff|0xff|0xff|0xff|0xff|0xff|
+|Fan|0xfe|0xff|0xff|0xff|0xff|0xff|0xff|
 
 The first byte is the fan mode:
 
 |Value|Mode|
 |--|--|
 |0x00|off **actually it turns on the boiler without turning on the heating**|
-|0x01|normal curve (eco?)|
-|0x02|strong curve (high?)|
+|0x01|eco|
+|0x02|high|
 |0x10|speed 0 (off)|
 |0x11|speed 1|
 |0x12|speed 2|
@@ -116,33 +116,25 @@ The first byte is the fan mode:
 |0x19|speed 9|
 |0x1A|speed 10|
 
-The manual mode overrides the heating, for the heating to work you have to set this to 0x00, 0x01, 0x02.
+The value should be ORed with 0xe0, e.g. eco should be 0xe1.
 
-*Note: setting this to 0x00 with 0º/40º or 55º setpoint for water will turn on the boiler (?)*.
+The manual mode overrides the heating, for the heating to work you have to set
+the fan  to 0x00, 0x01, 0x02.
 
-The second byte is supposedly the room boost (?), 0x00 if disabled or 0x01 if enabled. I'm not really sure about it. It doesn't make a difference.
+*Note: setting this to 0x00 with 0,40 or 55 setpoint for water will turn on the boiler (?)
+so I recommend to use manual speed 0 (0x10) instead*.
+
+The second byte is always 0xfe.
 
 ## Frame 0x16, Status information
 
 |byte 0|byte 1|byte 2| byte 3|byte 4|byte 5|byte 6|byte 7|
 |--|--|--|--|--|--|--|--|
-|Extended status|Status bits|Room temperature LSB|Room temperature MSB|Water temperature LSB|Water temperature MSB|Supply voltage LSB|Supply voltage MSB|
+|0x00|Status bits|Room temperature LSB|Room temperature MSB|Water temperature LSB|Water temperature MSB|Supply voltage LSB|Supply voltage MSB|
 
-For the temperature and voltage values see the respective sections. The values are updated only if the cp plus indicates it is active (i.e. when it sends a 0x01 in byte D3 of the diagnostic request 1, see below).
-
-### Extended status
-
-Extended status should be one of the values in this table, but I always see a 0x00 here.
-
-|Value|Status|
-|--|--|
-|0x00|Everything off|
-|0x04|BO active|
-|0x08|RB active|
-|0x10|RB available|
-|0x14|RB available, BO active|
-|0x18|RB available, active|
-|0x1C|RB available, active, BO active|
+For the temperature and voltage values see the respective sections. The values are updated only if the
+combi indicates it is active (i.e. when it sends a 0x01 in byte D3 of the diagnostic
+reply 1, see below).
 
 ### Status bits
 
@@ -150,7 +142,7 @@ This is the meaning of the status bits:
 
 |Bit|Meaning|
 |--|--|
-|0|easi status (?)|
+|0|antifreeze status|
 |1|220V supply status|
 |2|window status (1=closed)|
 |3|room demand|
@@ -171,26 +163,30 @@ The node address is always 0x01, the frame type is always single frame (left nib
  
 There are two different requests, each one sent on alternate cycles.
 
-### request 1
+### request 1 (on/off)
 
 |Frame type|Function|D1|D2|D3|D4|D5|
 |--|--|--|--|--|--|--|
 |0x04|0xB8|0x10|0x03|0x00 or 0x01|0xFF|0xFF|
 
-In D3 you should send a 0x01 to indicate the CP-Plus is on, 0x00 if it's off. The Combi will only accept commands if D3 is 0x01 (the fan is an exception, it will also work if D1 in the reply is 0x03). The values in frame 0x16 are not updated if it's 0x00. Since it doesn't seem it draws more current either way, I guess it's no problem leaving it to 0x01 always. 
+In D3 you should send a 0x01 to turn on the heater and 0x00 to turn it off. The Combi will only accept commands if D3 is 0x01 (the fan is an exception, it will also work if D1 in the reply is 0x03). The values in frame 0x16 are not updated if it's 0x00. Since it doesn't seem it draws more current either way, I guess it's no problem leaving it to 0x01 always.
+In my implementation of the cp-plus emulator I set it to 1 when there is
+something active (boiler, heating or fan) and set it to 0 after 10 seconds
+with nothing active (so I can be sure the combi has received the fan speed
+0 and won't turn on the boiler instead). 
 
 ### reply 1
 |Frame type|Function reply|D1|D2|D3|D4|D5|
 |--|--|--|--|--|--|--|
-|0x03|0xF8|??|??|0xFF0|0xFF|0xFF|
+|0x03|0xF8|requested state|current state|0xFF|0xFF|0xFF|
 
-D1 and D2 have the same value (though D2 might lag behind D1), the values I saw are 0x01, 0x02 and 0x03.
+D1 is the requested state and D2 is the current state, the values I saw are 0x01, 0x02 and 0x03.
 
-I think 0x01 means "ready", 0x02 "on" (acknowledging D3 in the request) and 0x03 "working" (heater or boiler on).
+I think 0x01 means "ready", 0x02 "on" (acknowledging D3 in the request) and 0x03
+"shutdown".
 
-In ventilation mode it never shows 0x03 even if the fan is running, unless you send a 0x00 in D3 in the request (after keeping it at 0x01). In that case it shows 0x03 briefly.
 
-### request 2
+### request 2 (get error code)
 |Frame type|Function|D1|D2|D3|D4|D5|
 |--|--|--|--|--|--|--|
 |0x06|0xB2|0x23|0x16|0x46|0x10|0x03|
@@ -200,14 +196,18 @@ Meaning unknown
 ### reply 2
 |Frame type|Function reply|D1|D2|D3|D4|D5|
 |--|--|--|--|--|--|--|
-|0x06|0xF2|??|??|??|??|??|
+|0x06|0xF2|0x01|error class|error code|error short|0xff|
 
-I always see D1=0x01 and D5=0xFF. I don't know the meaning of D2, D3 and D4.
-Most probably D3 is the error code but there must be some bits of the error code in one of the other bytes, since there are codes above 255.
+Error class can be 0 (no error) 1,2 (warning) 10,20,30 (error) or 40 (heater
+locked).
 
-I could only force two errors, both below 255
+Error code is the numeric code of the error and Error short is the number of
+times the error led will blink.
 
-|Error|D2-D3-D4|Notes|
-|--|--|--|
-|Window open|0x02, 0xA2, 0x03 or 0x02, 0xA2, 0x00| 0xA2 is 162, which is the code for the window open according to the cp plus manual. This error resets automatically when the window is closed|
-|Temperature sensor|0x14,0x6F,0x05|0x6F is 111, "temperature sensor". To reset this code I had to remove power to the Combi or stop the communication on the lin bus for around 80 seconds| 
+
+## Error reset
+
+A warning (error class 1 or 2) will disappear by itself but an error (class
+10,20 or 30) needs a reset sequence: first you turn off the heater
+(using the first diagnostic request frame), wait fot the current state to
+be 1 then stop the communication on the bus for 10 seconds.

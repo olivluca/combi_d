@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Spin,
-  MaskEdit, receiver;
+  MaskEdit, ExtCtrls, receiver;
 
 type
 
@@ -14,8 +14,10 @@ type
 
   TForm1 = class(TForm)
     CbOnOff: TCheckBox;
+    AutoTemp: TCheckBox;
     ReplyToFrame14: TCheckBox;
     Error: TCheckBox;
+    Timer1: TTimer;
     WaterDemand: TCheckBox;
     RoomDemand: TCheckBox;
     Fenster: TCheckBox;
@@ -44,6 +46,7 @@ type
     Water: TFloatSpinEdit;
     TempSetpoint: TLabel;
     WaterSetpoint: TLabel;
+    procedure AutoTempChange(Sender: TObject);
     procedure Diag1Change(Sender: TObject);
     procedure Diag2_1Change(Sender: TObject);
     procedure BitChange(Sender: TObject);
@@ -51,6 +54,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure ReplyToFrame14Change(Sender: TObject);
     procedure TemperatureChange(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
     procedure VoltageChange(Sender: TObject);
     procedure WaterChange(Sender: TObject);
   private
@@ -102,6 +106,11 @@ begin
   end;
 end;
 
+procedure TForm1.AutoTempChange(Sender: TObject);
+begin
+  TImer1.enabled:=AutoTemp.Checked;
+end;
+
 procedure TForm1.Diag2_1Change(Sender: TObject);
 var
   s: TMaskEdit;
@@ -144,6 +153,23 @@ end;
 procedure TForm1.TemperatureChange(Sender: TObject);
 begin
   FReceiver.Temperature:=Temperature.Value;
+end;
+
+procedure TForm1.Timer1Timer(Sender: TObject);
+var
+  increment, newvalue: Extended;
+begin
+  if timer1.tag=0 then
+    increment:=0.1
+  else
+    increment:=-0.1;
+  newvalue:=Temperature.Value+increment;
+  if (newvalue>30.0) or (newvalue<0.0) then
+  begin
+    timer1.tag:=1-timer1.tag;
+  end else
+   Temperature.Value:=newvalue;
+
 end;
 
 procedure TForm1.VoltageChange(Sender: TObject);

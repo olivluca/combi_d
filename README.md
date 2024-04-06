@@ -12,3 +12,7 @@ my software when I'm not near my van).
 
 The *trumalogger* directory contains a simple logger to capture lin frames
 and save them in a file.
+
+## cp plus emulator and display
+
+See the [TruMinus](https://github.com/olivluca/TruMinus) for a cp plus emulator and [TrumaDisplay](https://github.com/olivluca/TrumaDisplay) for a display.

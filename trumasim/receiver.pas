@@ -5,7 +5,10 @@ unit receiver;
 interface
 
 uses
-  Classes, SysUtils,trumautils,Serial;
+  Classes, SysUtils,trumautils,Serial,StrUtils,Dialogs;
+
+const ReplayMin = $33;
+      ReplayMax = $3b;
 
 type
 
@@ -36,16 +39,22 @@ TDiagReply2 = array[1..3] of byte;
     FOnFan:TOnFan;
     FOnOnoff:TOnOnoff;
     FOnMessage:TOnMessage;
+    FReplay:array[ReplayMin..ReplayMax] of TStringList;
+    FReplayIndex:array[ReplayMin..ReplayMax] of integer;
+    FPlaying:boolean;
+    FReplayOk:boolean;
     function GetOpened: boolean;
     procedure Log(const m: string);
     procedure NotifySetpoint;
     procedure NotifyFan;
     procedure NotifyOnOff;
+    procedure ReadReplay(const f: string);
     procedure Synclog;
   protected
     Procedure Execute;override;
   public
-    Constructor Create(ComPort:string; AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage);
+    Constructor Create(ComPort,Replay:string; AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage);
+    destructor Destroy;override;
     property Opened:boolean read GetOpened;
     //don't really care for atomicity
     property StatusByte:byte read FStatusByte write FStatusByte;
@@ -55,6 +64,9 @@ TDiagReply2 = array[1..3] of byte;
     property DiagReply1:byte read FDiagReply1 write FDiagReply1;
     property DiagReply2:TDiagReply2 read FDiagReply2 write FDiagReply2;
     property ReplyToFrame14:boolean read FReplyToFrame14 write FReplyToFrame14;
+    procedure RestartReplay;
+    property Playing:boolean read FPlaying write FPlaying;
+    property ReplayOk:boolean read FReplayOk;
 end;
 
 implementation
@@ -191,7 +203,23 @@ begin
                byte(lindata[8]):=hi(w);
                SendReply;
              end;
-           $14,$15,$1a,$33,$3a,$34,$36,$37,$38,$39,$35,$3b:
+           ReplayMin..ReplayMax:
+             begin
+               if not FReplayOk or (FReplay[id].Count=0) then
+                 FillByte(lindata[1],8,0)
+               else
+               begin
+                 Move(FReplay[id][FReplayIndex[id]][1],lindata[1],8);
+                 if FPlaying then
+                 begin
+                   inc(FReplayIndex[id]);
+                   if FReplayIndex[id]>=FReplay[id].count then
+                     FReplayIndex[id]:=0;
+                 end;
+               end;
+               SendReply;
+             end;
+           $14,$15,$1a:
              begin
                if (id<>$14) or FReplyToFrame14 then
                begin
@@ -352,8 +380,12 @@ begin
   SerClose(FPort)
 end;
 
-constructor TTrumaReceiver.Create(ComPort: string;AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage );
+constructor TTrumaReceiver.Create(ComPort,Replay: string;AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage );
+var
+  fr: Integer;
 begin
+  for fr:=ReplayMin to ReplayMax do
+    FReplay[fr]:=TStringList.Create;
   FOnSetpoint:=AOnSetpoint;
   FOnFan:=AOnFan;
   FOnOnoff:=AOnOnoff;
@@ -361,7 +393,70 @@ begin
   FPort:=SerOpen(ComPort);
   if FPort>0 then
     SerSetParams(FPort,9600,8,NoneParity,1,[]);
+  if Replay<>'' then
+  try
+    ReadReplay(Replay);
+    FPlaying:=true;
+    FReplayOk:=true;
+  except
+    on E:exception do
+      MessageDlg('Error reading replay data','Error reading replay data: '+E.Message,mtError,[mbOk],0);
+  end;
   inherited create(false);
+end;
+
+procedure TTrumaReceiver.ReadReplay(const f:string);
+const prefix=' --->>>>>> FID ';
+var fin:textfile;
+  line, sid, frame:string;
+  index, i: Integer;
+  b, id: LongInt;
+begin
+  assignfile(fin,f);
+  reset(fin);
+  while not eof(fin) do
+  begin
+    readln(fin,line);
+    if pos('no bytes received',line)>0 then
+      continue;
+    if not line.startswith(prefix) then
+      continue;
+    sid:='$'+copy(line,length(prefix)+1,2);
+    id:=StrToIntDef(sid,-1);
+    if (id<ReplayMin) or (id>ReplayMax) then
+      continue;
+    line:=ExtractWord(3,line,['|']);
+    frame:='';
+    index:=1;
+    for i:=1 to 8 do
+    begin
+      b:=StrToIntDef('$'+copy(line,index,2),-1);
+      if (b<0) or (b>255) then
+        break;
+      frame:=frame+chr(b);
+      index:=index+3;
+    end;
+    if length(frame)<>8 then
+      continue;
+    FReplay[id].Add(frame);
+  end;
+  closefile(fin);
+end;
+
+destructor TTrumaReceiver.Destroy;
+var fr:integer;
+begin
+  for fr:=ReplayMin to ReplayMax do
+    FReplay[fr].free;
+  inherited Destroy;
+end;
+
+procedure TTrumaReceiver.RestartReplay;
+var
+  fr: Integer;
+begin
+  for fr:=ReplayMin to ReplayMax do
+    FReplayIndex[fr]:=0;
 end;
 
 end.

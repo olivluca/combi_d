@@ -310,6 +310,24 @@ object Form1: TForm1
     OnChange = AutoTempChange
     TabOrder = 16
   end
+  object BtnRestartReplay: TButton
+    Left = 512
+    Height = 25
+    Top = 0
+    Width = 155
+    Caption = 'Restart replay'
+    OnClick = BtnRestartReplayClick
+    TabOrder = 17
+  end
+  object BtnPlayPause: TButton
+    Left = 432
+    Height = 25
+    Top = 0
+    Width = 75
+    Caption = 'Pause'
+    OnClick = BtnPlayPauseClick
+    TabOrder = 18
+  end
   object Timer1: TTimer
     Enabled = False
     OnTimer = Timer1Timer

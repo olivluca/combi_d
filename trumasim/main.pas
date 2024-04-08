@@ -13,6 +13,8 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    BtnPlayPause: TButton;
+    BtnRestartReplay: TButton;
     CbOnOff: TCheckBox;
     AutoTemp: TCheckBox;
     ReplyToFrame14: TCheckBox;
@@ -47,12 +49,14 @@ type
     TempSetpoint: TLabel;
     WaterSetpoint: TLabel;
     procedure AutoTempChange(Sender: TObject);
+    procedure BtnPlayPauseClick(Sender: TObject);
     procedure Diag1Change(Sender: TObject);
     procedure Diag2_1Change(Sender: TObject);
     procedure BitChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ReplyToFrame14Change(Sender: TObject);
+    procedure BtnRestartReplayClick(Sender: TObject);
     procedure TemperatureChange(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
     procedure VoltageChange(Sender: TObject);
@@ -82,17 +86,21 @@ implementation
 procedure TForm1.FormCreate(Sender: TObject);
 var
   port: String;
+  replay: String;
 begin
   port:=Application.GetOptionValue('port');
+  replay:=Application.GetOptionValue('replay');
   if port='' then
     port:='/dev/ttyUSB0';
-  FReceiver:=TTrumaReceiver.Create(port,@Setpoint, @OnFan, @OnOff, @Message);
+  FReceiver:=TTrumaReceiver.Create(port,replay,@Setpoint, @OnFan, @OnOff, @Message);
   if not FReceiver.Opened then
   begin
     MessageDlg('Error','Cannot open port '+port,mtError,[mbOk],0);
     Application.ShowMainForm:=false;
     Application.Terminate;
   end;
+  BtnPlayPause.Visible:=FReceiver.ReplayOk;
+  BtnRestartReplay.Visible:=FReceiver.ReplayOk;
 end;
 
 procedure TForm1.Diag1Change(Sender: TObject);
@@ -109,6 +117,19 @@ end;
 procedure TForm1.AutoTempChange(Sender: TObject);
 begin
   TImer1.enabled:=AutoTemp.Checked;
+end;
+
+procedure TForm1.BtnPlayPauseClick(Sender: TObject);
+var
+  playing: Boolean;
+begin
+  BtnPlayPause.Tag:=1-BtnPlayPause.Tag;
+  playing:=BtnPlayPause.Tag=0;
+  if playing then
+    BtnPlayPause.Caption:='Pause'
+  else
+    BtnPlayPause.Caption:='Play';
+  FReceiver.Playing:=playing;
 end;
 
 procedure TForm1.Diag2_1Change(Sender: TObject);
@@ -148,6 +169,11 @@ end;
 procedure TForm1.ReplyToFrame14Change(Sender: TObject);
 begin
   FReceiver.ReplyToFrame14:=ReplyToFrame14.Checked;
+end;
+
+procedure TForm1.BtnRestartReplayClick(Sender: TObject);
+begin
+  FReceiver.RestartReplay;
 end;
 
 procedure TForm1.TemperatureChange(Sender: TObject);

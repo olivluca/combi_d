@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
-  Classes, blcksock, lin
+  Classes, sysutils, blcksock, lin
   { you can add units after this };
 
 {$R *.res}
@@ -16,6 +16,8 @@ var
   sock: TUDPBlockSocket;
   block, recvframe: String;
   len: SizeInt;
+  debug: Boolean;
+  i: Integer;
 
   function Serror(const m: String): boolean;
   begin
@@ -30,6 +32,11 @@ begin
     writeln('usage: lserver <comport>');
     exit;
   end;
+
+  debug:=false;
+  if paramcount>=2 then
+    if paramstr(2)='debug' then
+      debug:=true;
 
   linmaster:=TLinMaster.Create(paramstr(1),9600);
   if linmaster.LastErrorDesc<>'' then
@@ -71,6 +78,13 @@ begin
             writeln('writeframe command too short');
             continue
           end;
+          if debug then
+          begin
+            write(format(' writeframe id %.2x                 ',[ord(block[2])]));
+            for i:=3 to len do
+              write(format('%.2x ',[ord(block[i])]));
+            writeln();
+          end;
           if linmaster.WriteFrame(ord(block[2]),copy(block,3,8)) then
             sock.SendString(chr(0))
           else
@@ -83,6 +97,10 @@ begin
           begin
             writeln('readframe command too short');
             continue;
+          end;
+          if debug then
+          begin
+            writeln(format('  readframe id %.2x ',[ord(block[2])]));
           end;
           if Linmaster.ReadFrame(ord(block[2]),recvframe,ord(block[3])) then
             Sock.SendString(chr(0)+recvframe)

@@ -214,7 +214,7 @@ begin
           begin
             case buf of
               $00: bytes_received:=-3;
-              $55: bytes_received:=-2;
+              $55: ; //bytes_received:=-2; don't resync, the pid could be $55
               else
                 if buf=pid then
                   bytes_received:=-1
@@ -233,7 +233,7 @@ begin
   if FVerbose then
     write(format(' --->>>>>> FID %.2Xh        = 55|%.2X|', [ID, PID]));
 
-  if bytes_received>1 then
+  if bytes_received>0 then
   begin
     RecChecksum:=ord(loc_data[bytes_received-1]);
     bytes_received:=bytes_received-1;
@@ -298,7 +298,7 @@ begin
   bytes_received := 0;
   while WaitingData>0 do
   begin
-      if bytes_received >= 8 + 1 + 4 then
+      if bytes_received >= 8 + 1 then
       begin
           // receive max 9 Bytes = 8 Data + 1 Chksum
           moreData := true;

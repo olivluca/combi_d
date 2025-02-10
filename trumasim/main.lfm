@@ -8,18 +8,19 @@ object Form1: TForm1
   ClientWidth = 681
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '2.2.6.0'
+  OnShow = FormShow
+  LCLVersion = '3.8.0.0'
   object Label1: TLabel
     Left = 21
-    Height = 15
+    Height = 13
     Top = 42
-    Width = 84
+    Width = 72
     Caption = 'Temp. setpoint'
     ParentColor = False
   end
   object TempSetpoint: TLabel
     Left = 136
-    Height = 15
+    Height = 13
     Top = 42
     Width = 8
     Caption = '--'
@@ -27,7 +28,7 @@ object Form1: TForm1
   end
   object WaterSetpoint: TLabel
     Left = 136
-    Height = 15
+    Height = 13
     Top = 80
     Width = 8
     Caption = '--'
@@ -35,25 +36,25 @@ object Form1: TForm1
   end
   object Label2: TLabel
     Left = 21
-    Height = 15
+    Height = 13
     Top = 80
-    Width = 85
+    Width = 72
     Caption = 'Water setpoint'
     ParentColor = False
   end
   object Label3: TLabel
     Left = 21
-    Height = 15
+    Height = 13
     Top = 120
-    Width = 22
+    Width = 18
     Caption = 'Fan'
     ParentColor = False
   end
   object Fan: TLabel
     Left = 136
-    Height = 15
+    Height = 13
     Top = 120
-    Width = 14
+    Width = 12
     Caption = '00'
     ParentColor = False
   end
@@ -69,16 +70,16 @@ object Form1: TForm1
   end
   object CbOnOff: TCheckBox
     Left = 21
-    Height = 20
+    Height = 17
     Top = 155
-    Width = 78
+    Width = 61
     Caption = 'CbOnOff'
     Enabled = False
     TabOrder = 1
   end
   object Temperature: TFloatSpinEdit
     Left = 405
-    Height = 29
+    Height = 21
     Top = 47
     Width = 107
     DecimalPlaces = 1
@@ -88,7 +89,7 @@ object Form1: TForm1
   end
   object Water: TFloatSpinEdit
     Left = 405
-    Height = 29
+    Height = 21
     Top = 80
     Width = 107
     DecimalPlaces = 1
@@ -98,7 +99,7 @@ object Form1: TForm1
   end
   object Voltage: TFloatSpinEdit
     Left = 405
-    Height = 29
+    Height = 21
     Top = 112
     Width = 107
     DecimalPlaces = 1
@@ -108,65 +109,66 @@ object Form1: TForm1
   end
   object Label4: TLabel
     Left = 313
-    Height = 15
+    Height = 13
     Top = 56
-    Width = 70
+    Width = 62
     Caption = 'Temperature'
     ParentColor = False
   end
   object Label5: TLabel
     Left = 313
-    Height = 15
+    Height = 13
     Top = 89
-    Width = 35
+    Width = 30
     Caption = 'Water'
     ParentColor = False
   end
   object Label6: TLabel
     Left = 313
-    Height = 15
+    Height = 13
     Top = 119
-    Width = 44
+    Width = 36
     Caption = 'Voltage'
     ParentColor = False
   end
   object Label7: TLabel
     Left = 313
-    Height = 15
+    Height = 13
     Top = 160
-    Width = 33
+    Width = 27
     Caption = 'Diag1'
     ParentColor = False
   end
   object Diag1h: TLabel
     Left = 436
-    Height = 15
+    Height = 13
     Top = 165
-    Width = 14
+    Width = 12
     Caption = '00'
     ParentColor = False
   end
   object Label8: TLabel
     Left = 313
-    Height = 15
+    Height = 13
     Top = 208
-    Width = 33
+    Width = 27
     Caption = 'Diag2'
     ParentColor = False
   end
   object Diag2h: TLabel
     Left = 576
-    Height = 15
+    Height = 13
     Top = 208
-    Width = 58
+    Width = 50
     Caption = '00, 00, 00'
     ParentColor = False
   end
   object Diag1: TMaskEdit
     Left = 360
-    Height = 29
+    Height = 21
     Top = 155
     Width = 50
+    EnableSets = False
     MaxLength = 2
     TabOrder = 5
     OnChange = Diag1Change
@@ -177,9 +179,10 @@ object Form1: TForm1
   object Diag2_1: TMaskEdit
     Tag = 1
     Left = 360
-    Height = 29
+    Height = 21
     Top = 200
     Width = 50
+    EnableSets = False
     MaxLength = 2
     TabOrder = 6
     OnChange = Diag2_1Change
@@ -190,9 +193,10 @@ object Form1: TForm1
   object Diag2_2: TMaskEdit
     Tag = 2
     Left = 424
-    Height = 29
+    Height = 21
     Top = 200
     Width = 50
+    EnableSets = False
     MaxLength = 2
     TabOrder = 7
     OnChange = Diag2_1Change
@@ -203,9 +207,10 @@ object Form1: TForm1
   object Diag2_3: TMaskEdit
     Tag = 3
     Left = 488
-    Height = 29
+    Height = 21
     Top = 200
     Width = 50
+    EnableSets = False
     MaxLength = 2
     TabOrder = 8
     OnChange = Diag2_1Change
@@ -215,9 +220,9 @@ object Form1: TForm1
   end
   object Label9: TLabel
     Left = 21
-    Height = 15
+    Height = 13
     Top = 8
-    Width = 91
+    Width = 81
     Caption = 'Received data'
     Font.Style = [fsBold]
     ParentColor = False
@@ -225,9 +230,9 @@ object Form1: TForm1
   end
   object Label10: TLabel
     Left = 312
-    Height = 15
+    Height = 13
     Top = 8
-    Width = 79
+    Width = 72
     Caption = 'Data to send'
     Font.Style = [fsBold]
     ParentColor = False
@@ -235,80 +240,80 @@ object Form1: TForm1
   end
   object Easi: TCheckBox
     Left = 536
-    Height = 20
+    Height = 17
     Top = 34
-    Width = 54
+    Width = 37
     Caption = 'Easi'
-    OnChange = BitChange
     TabOrder = 9
+    OnChange = BitChange
   end
   object Netz: TCheckBox
     Tag = 1
     Left = 536
-    Height = 20
+    Height = 17
     Top = 56
-    Width = 55
+    Width = 40
     Caption = 'Netz'
-    OnChange = BitChange
     TabOrder = 10
+    OnChange = BitChange
   end
   object Fenster: TCheckBox
     Tag = 2
     Left = 536
-    Height = 20
+    Height = 17
     Top = 80
-    Width = 72
+    Width = 55
     Caption = 'Fenster'
-    OnChange = BitChange
     TabOrder = 11
+    OnChange = BitChange
   end
   object RoomDemand: TCheckBox
     Tag = 3
     Left = 536
-    Height = 20
+    Height = 17
     Top = 104
-    Width = 110
+    Width = 84
     Caption = 'RoomDemand'
-    OnChange = BitChange
     TabOrder = 12
+    OnChange = BitChange
   end
   object WaterDemand: TCheckBox
     Tag = 4
     Left = 536
-    Height = 20
+    Height = 17
     Top = 128
-    Width = 111
+    Width = 87
     Caption = 'WaterDemand'
-    OnChange = BitChange
     TabOrder = 13
+    OnChange = BitChange
   end
   object Error: TCheckBox
     Tag = 7
     Left = 536
-    Height = 20
+    Height = 17
     Top = 152
-    Width = 56
+    Width = 42
     Caption = 'Error'
-    OnChange = BitChange
     TabOrder = 14
+    OnChange = BitChange
   end
   object ReplyToFrame14: TCheckBox
     Left = 316
-    Height = 20
+    Height = 17
     Top = 25
-    Width = 130
+    Width = 104
     Caption = 'Reply to frame 14'
-    OnChange = ReplyToFrame14Change
     TabOrder = 15
+    OnChange = ReplyToFrame14Change
   end
   object AutoTemp: TCheckBox
     Left = 208
-    Height = 20
+    Height = 17
     Top = 51
-    Width = 85
+    Width = 67
     Caption = 'AutoTemp'
-    OnChange = AutoTempChange
     TabOrder = 16
+    OnChange = AutoTempChange
   end
   object BtnRestartReplay: TButton
     Left = 512
@@ -316,8 +321,8 @@ object Form1: TForm1
     Top = 0
     Width = 155
     Caption = 'Restart replay'
-    OnClick = BtnRestartReplayClick
     TabOrder = 17
+    OnClick = BtnRestartReplayClick
   end
   object BtnPlayPause: TButton
     Left = 432
@@ -325,8 +330,8 @@ object Form1: TForm1
     Top = 0
     Width = 75
     Caption = 'Pause'
-    OnClick = BtnPlayPauseClick
     TabOrder = 18
+    OnClick = BtnPlayPauseClick
   end
   object Timer1: TTimer
     Enabled = False

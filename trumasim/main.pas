@@ -55,6 +55,7 @@ type
     procedure BitChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure ReplyToFrame14Change(Sender: TObject);
     procedure BtnRestartReplayClick(Sender: TObject);
     procedure TemperatureChange(Sender: TObject);
@@ -92,7 +93,7 @@ begin
   replay:=Application.GetOptionValue('replay');
   if port='' then
     port:='/dev/ttyUSB0';
-  FReceiver:=TTrumaReceiver.Create(port,replay,@Setpoint, @OnFan, @OnOff, @Message);
+  FReceiver:=TTrumaReceiver.Create(port,replay,@Setpoint, @OnFan, @OnOff, @Message,Application.HasOption('nolin'),Application.HasOption('gas'));
   if not FReceiver.Opened then
   begin
     MessageDlg('Error','Cannot open port '+port,mtError,[mbOk],0);
@@ -164,6 +165,11 @@ end;
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   FReceiver.Free;
+end;
+
+procedure TForm1.FormShow(Sender: TObject);
+begin
+  FReceiver.Start;
 end;
 
 procedure TForm1.ReplyToFrame14Change(Sender: TObject);

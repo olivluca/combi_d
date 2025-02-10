@@ -39,6 +39,8 @@ TDiagReply2 = array[1..3] of byte;
     FOnFan:TOnFan;
     FOnOnoff:TOnOnoff;
     FOnMessage:TOnMessage;
+    FNoTransceiver:boolean;
+    FGas:boolean;
     FReplay:array[ReplayMin..ReplayMax] of TStringList;
     FReplayIndex:array[ReplayMin..ReplayMax] of integer;
     FPlaying:boolean;
@@ -53,7 +55,7 @@ TDiagReply2 = array[1..3] of byte;
   protected
     Procedure Execute;override;
   public
-    Constructor Create(ComPort,Replay:string; AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage);
+    Constructor Create(ComPort,Replay:string; AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage; ANoTransceiver:boolean; AGas:boolean);
     destructor Destroy;override;
     property Opened:boolean read GetOpened;
     //don't really care for atomicity
@@ -109,16 +111,19 @@ begin
 end;
 
 procedure TTrumaReceiver.Execute;
-var c, pid, id, NewFan:byte;
+var c, pid, id:byte;
   status:(WaitBreak,WaitSync,WaitPid);
   lindata:string;
   w:word;
-  i:integer;
   mrsid,nad, b2func:byte;
-  checksumreceived, framereceived, NewOnOff:boolean;
-  chksum, expected: UInt8;
-  NewSetPointReceived: Extended;
+  chksum: UInt8;
   oldtick: QWord;
+
+  procedure Echo(constref ec:byte);
+  begin
+    SerWrite(FPort,ec,1);
+    //SerDrain(FPort);
+  end;
 
   procedure SendReply;
   var
@@ -132,6 +137,9 @@ var c, pid, id, NewFan:byte;
      SerWrite(FPort,lindata[1],8);
      SerWrite(FPort,chksum,1);
      SerDrain(FPort);
+     //without the transceiver the data isn't echoed back
+     if FNoTransceiver then
+        exit;
      //read back sent data
      for i:=1 to 9 do
        if SerReadTimeout(FPort,dummy,1,20)<>1 then
@@ -143,6 +151,101 @@ var c, pid, id, NewFan:byte;
          if (i<9) and (dummy<>byte(lindata[i])) then
            Log('===================== mismatch '+inttohex(byte(lindata[i]),2)+' '+inttohex(dummy,2))
        end;
+  end;
+
+  procedure HandleReceivedFrame;
+  var
+    NewSetPointReceived: Extended;
+    expected: UInt8;
+    NewOnOff: boolean;
+    framereceived: boolean;
+    checksumreceived: boolean;
+    i: integer;
+    NewFan: byte;
+  begin
+    framereceived:=true;
+    checksumreceived:=false;
+    for i:=1 to 8 do
+      if SerReadTimeout(FPort,c,1,50)<>1 then
+      begin
+        framereceived:=false;
+        break;
+      end else
+      begin
+        if FNoTransceiver then
+          Echo(c);
+        byte(lindata[i]):=c;
+      end;
+    if framereceived then
+      checksumreceived:=SerReadTimeout(FPort,chksum,1,50)=1
+    else
+      Log('frame '+inttohex(id,2)+' not received');
+    if checksumreceived then
+    begin
+      if FNoTransceiver then
+        Echo(chksum);
+      expected:=GetChecksum(pid,lindata);
+      if  chksum<>expected then
+      begin
+        Log(format('bad checksum id %.2x, expected %.2x received %.2x',[id,expected,chksum]));
+        framereceived:=false;
+      end;
+    end;
+    if framereceived and checksumreceived then
+    begin
+      case id of
+         $3,$4:
+           begin
+             FSetPointWater:=id=4;
+             NewSetPointReceived:=DecodeTempKelvin(byte(lindata[1]),byte(lindata[2]));
+             if NewSetPointReceived<>FSetPointReceived[FSetPointWater] then
+             begin
+               FSetPointReceived[FSetPointWater]:=NewSetPointReceived;
+               Synchronize(@NotifySetpoint)
+             end
+           end;
+         $5: //energy selection
+           begin
+           end;
+         $6: //power limit
+           begin
+           end;
+         $7: //fan
+           begin
+             NewFan:=byte(lindata[1]);
+             if NewFan<>FFan then
+             begin
+               FFan:=NewFan;
+               Synchronize(@NotifyFan);
+             end
+           end;
+         $3b: //combi gas
+           begin
+
+           end;
+         $3c:
+           begin
+             mrsid:=byte(lindata[3]);
+             nad:=byte(lindata[1]);
+             //Log(format('received $3c with nad %x sid %x',[nad,mrsid]));
+             if (mrsid=$b8) and (nad=$01) then
+             begin
+               NewOnOff:=byte(lindata[6])<>0;
+               if NewOnOff<>FOnOff then
+               begin
+                 FOnOff:=NewOnOff;
+                 Synchronize(@NotifyOnoff);
+               end;
+             end;
+             if (mrsid=$b2) and (nad=$01) then
+             begin
+               b2func:=byte(lindata[4]);
+               //log('received b2func '+INtToHex(b2func,2))
+             end
+           end;
+      end;
+
+    end;
   end;
 
 begin
@@ -164,6 +267,9 @@ begin
       end;
       continue;
     end;
+    //echo back the received byte if there's no lin transceiver
+    if FNoTransceiver then
+      Echo(c);
    oldtick:=GetTickCount64;
    case Status of
     WaitBreak:
@@ -173,7 +279,7 @@ begin
           Status:=WaitSync;
         end else
         begin
-          Log('waiting break, discarding '+inttohex(c,2));
+          Log('waiting break, discarding '+inttohex(c,2)+' last id '+inttohex(id,2));
         end;
       end;
     WaitSync:
@@ -183,7 +289,7 @@ begin
           Status:=WaitPid;
         end else
         begin
-          Log('waiting sync, discarding '+inttohex(c,2));
+          Log('waiting sync, discarding '+inttohex(c,2)+' last id '+inttohex(id,2));
           Status:=WaitBreak;
         end;
       end;
@@ -204,7 +310,11 @@ begin
                SendReply;
              end;
            ReplayMin..ReplayMax:
+             //frame 3b is written instead of read for the combi gas
+             if (id=$3b) and FGas then
              begin
+               HandleReceivedFrame;
+             end else begin
                if not FReplayOk or (FReplay[id].Count=0) then
                  FillByte(lindata[1],8,0)
                else
@@ -280,8 +390,15 @@ begin
                  byte(lindata[3]):=$f2;
                  byte(lindata[4]):=$17; //supplier id $4617-> truma
                  byte(lindata[5]):=$46;
-                 byte(lindata[6]):=$10; //function id $0310 -> combi diesel
-                 byte(lindata[7]):=$03;
+                 if FGas then
+                 begin
+                   byte(lindata[6]):=$01; //function id $0301 -> combi gas
+                   byte(lindata[7]):=$03;
+                 end else
+                 begin
+                   byte(lindata[6]):=$10; //function id $0310 -> combi diesel
+                   byte(lindata[7]):=$03;
+                 end;
                  byte(lindata[8]):=$03; //tin variant
                end else
                begin
@@ -298,79 +415,7 @@ begin
              end;
            else
              begin
-               framereceived:=true;
-               checksumreceived:=false;
-               for i:=1 to 8 do
-                 if SerReadTimeout(FPort,c,1,50)<>1 then
-                 begin
-                   framereceived:=false;
-                   break;
-                 end else
-                   byte(lindata[i]):=c;
-               if framereceived then
-                 checksumreceived:=SerReadTimeout(FPort,chksum,1,50)=1
-               else
-                 Log('frame '+inttohex(id,2)+' not received');
-               if checksumreceived then
-               begin
-                 expected:=GetChecksum(pid,lindata);
-                 if  chksum<>expected then
-                 begin
-                   Log(format('bad checksum id %.2x, expected %.2x received %.2x',[id,expected,chksum]));
-                   framereceived:=false;
-                 end;
-               end;
-               if framereceived and checksumreceived then
-               begin
-                 case id of
-                    $3,$4:
-                      begin
-                        FSetPointWater:=id=4;
-                        NewSetPointReceived:=DecodeTempKelvin(byte(lindata[1]),byte(lindata[2]));
-                        if NewSetPointReceived<>FSetPointReceived[FSetPointWater] then
-                        begin
-                          FSetPointReceived[FSetPointWater]:=NewSetPointReceived;
-                          Synchronize(@NotifySetpoint)
-                        end
-                      end;
-                    $5: //energy selection
-                      begin
-                      end;
-                    $6: //power limit
-                      begin
-                      end;
-                    $7: //fan
-                      begin
-                        NewFan:=byte(lindata[1]);
-                        if NewFan<>FFan then
-                        begin
-                          FFan:=NewFan;
-                          Synchronize(@NotifyFan);
-                        end
-                      end;
-                    $3c:
-                      begin
-                        mrsid:=byte(lindata[3]);
-                        nad:=byte(lindata[1]);
-                        //Log(format('received $3c with nad %x sid %x',[nad,mrsid]));
-                        if (mrsid=$b8) and (nad=$01) then
-                        begin
-                          NewOnOff:=byte(lindata[6])<>0;
-                          if NewOnOff<>FOnOff then
-                          begin
-                            FOnOff:=NewOnOff;
-                            Synchronize(@NotifyOnoff);
-                          end;
-                        end;
-                        if (mrsid=$b2) and (nad=$01) then
-                        begin
-                          b2func:=byte(lindata[4]);
-                          //log('received b2func '+INtToHex(b2func,2))
-                        end
-                      end;
-                 end;
-
-               end;
+               HandleReceivedFrame;
              end;
           end; //case id of
           Status:=WaitBreak;
@@ -380,7 +425,7 @@ begin
   SerClose(FPort)
 end;
 
-constructor TTrumaReceiver.Create(ComPort,Replay: string;AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage );
+constructor TTrumaReceiver.Create(ComPort,Replay: string;AOnSetpoint:TOnSetpoint; AOnFan:TOnFan; AOnOnoff: TOnOnoff; AOnMessage:TOnMessage; ANoTransceiver:boolean; AGas:boolean);
 var
   fr: Integer;
 begin
@@ -390,6 +435,8 @@ begin
   FOnFan:=AOnFan;
   FOnOnoff:=AOnOnoff;
   FOnMessage:=AOnMessage;
+  FNoTransceiver:=ANoTransceiver;
+  FGas:=AGas;
   FPort:=SerOpen(ComPort);
   if FPort>0 then
     SerSetParams(FPort,9600,8,NoneParity,1,[]);
